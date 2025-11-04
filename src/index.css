@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #root > div > div > div[ref],
+  #root > div > div > div[ref] * {
+    visibility: visible;
+  }
+  .print:hidden {
+    display: none !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background-color: #1f2937;
+}
