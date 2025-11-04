@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.VITE_BACKEND_URI;
+
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/maintenance",
+  baseURL: `${baseURL}/api/maintenance`,
 });
 
 const token = localStorage.getItem("token");
@@ -12,4 +14,5 @@ export const getReminders = () => API.get("/");
 export const markReturned = (id) => API.put(`/return/${id}`);
 export const deleteReminder = (id) => API.delete(`/${id}`);
 export const getReport = () => API.get("/report");
-export const getReportExport = () => API.get("/report/export", { responseType: "blob" });
+export const getReportExport = () =>
+  API.get("/report/export", { responseType: "blob" });

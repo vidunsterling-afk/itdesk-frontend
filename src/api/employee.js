@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.VITE_BACKEND_URI;
+
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/employees",
+  baseURL: `${baseURL}/api/employees`,
 });
 
 // Attach JWT token automatically
@@ -19,4 +21,5 @@ export const deleteEmployee = (id) => API.delete(`/${id}`);
 export const getEmployeeById = (id) => API.get(`/${id}`);
 export const unassignAssets = (employeeId, assetIds, type) =>
   API.put(`/unassign/${employeeId}`, { assetIds, type });
-export const exportEmployeesExcel = () => API.get("/export-excel", { responseType: "blob" });
+export const exportEmployeesExcel = () =>
+  API.get("/export-excel", { responseType: "blob" });

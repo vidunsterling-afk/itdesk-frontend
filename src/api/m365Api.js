@@ -1,8 +1,10 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.VITE_BACKEND_URI;
+
 // Base API instance
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/m365", // replace with your production URL if needed
+  baseURL: `${baseURL}/api/m365`, // replace with your production URL if needed
 });
 
 // Attach token if available

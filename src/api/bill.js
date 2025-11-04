@@ -1,14 +1,16 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.VITE_BACKEND_URI;
+
 const API = axios.create({
-    baseURL: "http://localhost:5000/api/bills",
+  baseURL: `${baseURL}/api/bills`,
 });
 
 // Optional: add token if you want auth later
 API.interceptors.request.use((config) => {
-    const token = localStorage.getItem("token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 export const getBills = () => API.get("/");

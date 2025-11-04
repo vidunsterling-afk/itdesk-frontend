@@ -20,6 +20,7 @@ export default function BillManager() {
     recurring: false,
   });
   const [loading, setLoading] = useState(false);
+  const baseURL = import.meta.env.VITE_BACKEND_URI;
 
   // Fetch bills
   const fetchBills = async () => {
@@ -280,9 +281,7 @@ export default function BillManager() {
           {/* Export Button */}
           <div className="flex justify-end mb-4">
             <button
-              onClick={() =>
-                window.open("http://localhost:5000/api/bills/export-excel")
-              }
+              onClick={() => window.open(`${baseURL}/api/bills/export-excel`)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Export to Excel
