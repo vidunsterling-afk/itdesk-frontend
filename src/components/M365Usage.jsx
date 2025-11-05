@@ -20,6 +20,11 @@ import {
   CartesianGrid,
 } from "recharts";
 import { IoSyncOutline } from "react-icons/io5";
+import { FaChartLine, FaUsers } from "react-icons/fa6";
+import { GoAlertFill } from "react-icons/go";
+import { FaUserSlash } from "react-icons/fa";
+import { MdDataUsage } from "react-icons/md";
+import { IoBarChart } from "react-icons/io5";
 
 export default function M365Dashboard() {
   const [data, setData] = useState([]);
@@ -31,8 +36,8 @@ export default function M365Dashboard() {
   const [growthData, setGrowthData] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
 
-  const isSyncOld = lastSync
-    ? (Date.now() - new Date(lastSync).getTime()) / (1000 * 60 * 60 * 24) > 1
+  let isSyncOld = lastSync
+    ? (Date.now() - new Date(lastSync).getTime()) / (1000 * 60 * 60 * 12) > 1
     : false;
 
   const formatGB = (mb) => ((mb || 0) / 1024).toFixed(2);
@@ -98,6 +103,7 @@ export default function M365Dashboard() {
 
   useEffect(() => {
     fetchGrowthTrends(selectedUser);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser]);
 
   return (
@@ -115,7 +121,7 @@ export default function M365Dashboard() {
             </p>
             {isSyncOld && (
               <p className="text-red-500 text-sm mt-1 font-medium">
-                Last sync is over 24 hours old. Please re-sync.
+                Last sync is over 12 hours old. Please re-sync.
               </p>
             )}
           </div>
@@ -143,7 +149,9 @@ export default function M365Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-blue-100 rounded-xl">
-              <span className="text-2xl">👥</span>
+              <span className="text-2xl">
+                <FaUsers />
+              </span>
             </div>
             <div>
               <p className="text-gray-600 text-sm font-medium">Total Users</p>
@@ -157,7 +165,9 @@ export default function M365Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-red-100 rounded-xl">
-              <span className="text-2xl">⚠️</span>
+              <span className="text-2xl">
+                <GoAlertFill />
+              </span>
             </div>
             <div>
               <p className="text-gray-600 text-sm font-medium">
@@ -173,7 +183,9 @@ export default function M365Dashboard() {
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-yellow-100 rounded-xl">
-              <span className="text-2xl">🛑</span>
+              <span className="text-2xl">
+                <FaUserSlash />
+              </span>
             </div>
             <div>
               <p className="text-gray-600 text-sm font-medium">
@@ -191,7 +203,9 @@ export default function M365Dashboard() {
       <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-semibold text-xl text-gray-800 flex items-center gap-2">
-            <span className="text-2xl">📊</span>
+            <span className="text-2xl">
+              <MdDataUsage />
+            </span>
             User Usage Overview
           </h3>
           <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
@@ -267,7 +281,9 @@ export default function M365Dashboard() {
         {/* High Usage */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">⚠️</span>
+            <span className="text-2xl">
+              <GoAlertFill />
+            </span>
             <h3 className="font-semibold text-lg text-gray-800">
               High Usage Alerts
             </h3>
@@ -295,7 +311,9 @@ export default function M365Dashboard() {
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <span className="text-4xl mb-2 block">🎉</span>
+                <span className="text-4xl mb-2 block">
+                  <GoAlertFill />
+                </span>
                 No high usage users
               </div>
             )}
@@ -305,7 +323,9 @@ export default function M365Dashboard() {
         {/* Inactive Users */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">🛑</span>
+            <span className="text-2xl">
+              <FaUserSlash />
+            </span>
             <h3 className="font-semibold text-lg text-gray-800">
               Inactive Users
             </h3>
@@ -334,7 +354,9 @@ export default function M365Dashboard() {
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <span className="text-4xl mb-2 block">✅</span>
+                <span className="text-4xl mb-2 block">
+                  <FaUsers />
+                </span>
                 All users active
               </div>
             )}
@@ -344,7 +366,9 @@ export default function M365Dashboard() {
         {/* Top Storage Users */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 md:col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">💾</span>
+            <span className="text-2xl">
+              <IoBarChart />
+            </span>
             <h3 className="font-semibold text-lg text-gray-800">
               Top OneDrive Storage Users
             </h3>
@@ -383,7 +407,9 @@ export default function M365Dashboard() {
         {/* Growth Trends Chart */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 md:col-span-2">
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">📈</span>
+            <span className="text-2xl">
+              <FaChartLine />
+            </span>
             <h3 className="font-semibold text-lg text-gray-800">
               Storage Growth Trends
             </h3>

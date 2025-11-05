@@ -12,5 +12,5 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Send fingerprint assignment emails
 export const assignFingerprint = (data) => API.post("/notify", data);
+export const getFingerprintLogs = () => API.get("/logs");

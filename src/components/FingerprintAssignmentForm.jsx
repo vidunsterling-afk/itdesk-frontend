@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { assignFingerprint } from "../api/attendanceApi";
-import { getEmployees } from "../api/employee";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
+import { assignFingerprint, getFingerprintLogs } from "../api/attendanceApi";
+import { getEmployees } from "../api/employee";
 
-const FingerprintAssignmentForm = () => {
+const FingerprintAssignmentPage = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [employeeEmail, setEmployeeEmail] = useState("");
@@ -13,8 +13,10 @@ const FingerprintAssignmentForm = () => {
   const [assignedBy, setAssignedBy] = useState("IT Department");
   const [sendTo, setSendTo] = useState("both");
   const [loading, setLoading] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
-  // Fetch employees when component loads
+  // Fetch employees
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -22,13 +24,31 @@ const FingerprintAssignmentForm = () => {
         setEmployees(data);
       } catch (error) {
         console.error("Failed to load employees", error);
-        toast.error("⚠️ Failed to load employees");
+        toast.error("Failed to load employees");
       }
     };
     fetchEmployees();
   }, []);
 
-  // When employee is selected, auto-fill their details
+  // Fetch logs
+  const fetchLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const { data } = await getFingerprintLogs();
+      setLogs(data);
+    } catch (error) {
+      console.error("Failed to fetch logs", error);
+      toast.error("Unable to load logs");
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  // Auto-fill details when employee selected
   useEffect(() => {
     if (selectedEmployee) {
       const emp = employees.find((e) => e._id === selectedEmployee);
@@ -46,22 +66,24 @@ const FingerprintAssignmentForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    const emp = employees.find((e) => e._id === selectedEmployee);
+    const payload = {
+      employeeName: emp?.name,
+      employeeEmail,
+      employeeId,
+      assignedBy,
+      sendTo,
+    };
+
     try {
-      const emp = employees.find((e) => e._id === selectedEmployee);
-      await assignFingerprint({
-        employeeName: emp?.name,
-        employeeEmail,
-        employeeId,
-        assignedBy,
-        sendTo,
-      });
+      await assignFingerprint(payload);
       toast.success("Email(s) sent successfully!");
       setSelectedEmployee("");
       setEmployeeEmail("");
       setEmployeeId("");
       setSendTo("both");
     } catch (error) {
-      console.error(error);
+      console.error("Axios error:", error.response?.data || error.message);
       toast.error("Failed to send emails.");
     } finally {
       setLoading(false);
@@ -69,124 +91,193 @@ const FingerprintAssignmentForm = () => {
   };
 
   return (
-    <motion.div
-      className="p-6 bg-gray-50 rounded-2xl shadow-md max-w-2xl mx-auto mt-10"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
+    <div className="max-w-6xl mx-auto p-6">
       <Toaster position="top-right" />
 
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">
-        Assign Employee to Fingerprint System
-      </h2>
-
-      <motion.form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        whileHover={{ scale: 1.005 }}
+      {/* --- FORM SECTION --- */}
+      <motion.div
+        className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 mb-10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
       >
-        {/* Employee Selection */}
-        <div className="flex flex-col">
-          <label className="font-medium text-gray-700 mb-1">
-            Select Employee
-          </label>
-          <select
-            value={selectedEmployee}
-            onChange={(e) => setSelectedEmployee(e.target.value)}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          >
-            <option value="">-- Select Employee --</option>
-            {employees.map((emp) => (
-              <option key={emp._id} value={emp._id}>
-                {emp.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">
+          Assign Employee to Fingerprint System
+        </h2>
 
-        <div className="flex flex-col">
-          <label className="font-medium text-gray-700 mb-1">Email</label>
-          <input
-            type="email"
-            value={employeeEmail}
-            readOnly
-            className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="font-medium text-gray-700 mb-1">Employee ID</label>
-          <input
-            type="text"
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="font-medium text-gray-700 mb-1">Assigned By</label>
-          <input
-            type="text"
-            value={assignedBy}
-            onChange={(e) => setAssignedBy(e.target.value)}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            required
-          />
-        </div>
-
-        {/* Send To Options */}
-        <div className="mt-2">
-          <label className="block font-medium text-gray-700 mb-2">
-            Send Email To:
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 text-gray-700">
-              <input
-                type="radio"
-                value="employee"
-                checked={sendTo === "employee"}
-                onChange={(e) => setSendTo(e.target.value)}
-              />
-              Employee
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Employee Selection */}
+          <div className="flex flex-col">
+            <label className="font-medium text-gray-700 mb-1">
+              Select Employee
             </label>
-            <label className="flex items-center gap-2 text-gray-700">
-              <input
-                type="radio"
-                value="hr"
-                checked={sendTo === "hr"}
-                onChange={(e) => setSendTo(e.target.value)}
-              />
-              HR
-            </label>
-            <label className="flex items-center gap-2 text-gray-700">
-              <input
-                type="radio"
-                value="both"
-                checked={sendTo === "both"}
-                onChange={(e) => setSendTo(e.target.value)}
-              />
-              Both
-            </label>
+            <select
+              value={selectedEmployee}
+              onChange={(e) => setSelectedEmployee(e.target.value)}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+            >
+              <option value="">-- Select Employee --</option>
+              {employees.map((emp) => (
+                <option key={emp._id} value={emp._id}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {/* Email */}
+          <div className="flex flex-col">
+            <label className="font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              value={employeeEmail}
+              readOnly
+              className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+            />
+          </div>
+
+          {/* Employee ID */}
+          <div className="flex flex-col">
+            <label className="font-medium text-gray-700 mb-1">
+              Employee ID
+            </label>
+            <input
+              type="text"
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+              className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600"
+            />
+          </div>
+
+          {/* Assigned By */}
+          <div className="flex flex-col">
+            <label className="font-medium text-gray-700 mb-1">
+              Assigned By
+            </label>
+            <input
+              type="text"
+              value={assignedBy}
+              onChange={(e) => setAssignedBy(e.target.value)}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+            />
+          </div>
+
+          {/* Send To */}
+          <div className="mt-2">
+            <label className="block font-medium text-gray-700 mb-2">
+              Send Email To:
+            </label>
+            <div className="flex gap-4">
+              {["employee", "hr", "both"].map((option) => (
+                <label
+                  key={option}
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <input
+                    type="radio"
+                    value={option}
+                    checked={sendTo === option}
+                    onChange={(e) => setSendTo(e.target.value)}
+                  />
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.95 }}
+            disabled={loading}
+            className={`mt-4 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {loading ? "Sending..." : "Send Email(s)"}
+          </motion.button>
+        </form>
+      </motion.div>
+
+      {/* --- LOG TABLE SECTION --- */}
+      <motion.div
+        className="bg-white rounded-2xl shadow-md border border-gray-200 p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Fingerprint & Email Logs
+          </h2>
+          <button
+            onClick={fetchLogs}
+            className="text-sm bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition"
+          >
+            Refresh
+          </button>
         </div>
 
-        <motion.button
-          type="submit"
-          whileTap={{ scale: 0.95 }}
-          disabled={loading}
-          className={`mt-4 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {loading ? "Sending..." : "Send Email(s)"}
-        </motion.button>
-      </motion.form>
-    </motion.div>
+        {logsLoading ? (
+          <div className="text-center text-gray-600 py-10">Loading logs...</div>
+        ) : logs.length === 0 ? (
+          <div className="text-center text-gray-600 py-10">
+            No logs found yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border border-gray-200 text-sm rounded-lg overflow-hidden">
+              <thead className="bg-gray-100 text-gray-700">
+                <tr>
+                  <th className="px-4 py-2 text-left">#</th>
+                  <th className="px-4 py-2 text-left">Employee Name</th>
+                  <th className="px-4 py-2 text-left">Employee ID</th>
+                  <th className="px-4 py-2 text-left">Email</th>
+                  <th className="px-4 py-2 text-left">Sent To</th>
+                  <th className="px-4 py-2 text-left">Assigned By</th>
+                  <th className="px-4 py-2 text-left">Date</th>
+                  <th className="px-4 py-2 text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log, index) => (
+                  <tr
+                    key={log._id}
+                    className="border-t hover:bg-gray-50 transition"
+                  >
+                    <td className="px-4 py-2">{index + 1}</td>
+                    <td className="px-4 py-2">{log.employeeName}</td>
+                    <td className="px-4 py-2">{log.employeeId}</td>
+                    <td className="px-4 py-2">{log.employeeEmail}</td>
+                    <td className="px-4 py-2 capitalize">{log.sendTo}</td>
+                    <td className="px-4 py-2">{log.assignedBy}</td>
+                    <td className="px-4 py-2">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`px-2 py-1 rounded-md text-xs font-semibold ${
+                          log.status === "success"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {(log.status = "success")}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+    </div>
   );
 };
 
-export default FingerprintAssignmentForm;
+export default FingerprintAssignmentPage;
