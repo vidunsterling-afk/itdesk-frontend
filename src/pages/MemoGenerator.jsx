@@ -613,30 +613,32 @@ export default function MemoGenerator() {
 
         {/* Employee selection */}
         <div className="mb-6 relative">
-          <label className="text-sm text-gray-600 block mb-2">To:</label>
           <div className="flex items-center gap-2">
-            {loading && (
-              <FaSpinner className="animate-spin text-blue-500 text-lg ml-2" />
-            )}
-            <select
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-              disabled={loading}
-              className="border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 disabled:bg-gray-100"
-            >
-              {loading ? (
-                <option disabled>Loading employees...</option>
-              ) : (
-                <>
-                  <option value="">Select Employee</option>
-                  {employees.map((emp) => (
-                    <option key={emp._id} value={emp._id}>
-                      {emp.name} — {emp.department}
-                    </option>
-                  ))}
-                </>
+            <label className="text-sm text-gray-600 block mb-2">To:</label>
+            <div className="flex items-center gap-2">
+              {loading && (
+                <FaSpinner className="animate-spin text-blue-500 text-lg ml-2" />
               )}
-            </select>
+              <select
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                disabled={loading}
+                className="border border-gray-300 rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 disabled:bg-gray-100"
+              >
+                {loading ? (
+                  <option disabled>Loading employees...</option>
+                ) : (
+                  <>
+                    <option value="">Select Employee</option>
+                    {employees.map((emp) => (
+                      <option key={emp._id} value={emp._id}>
+                        {emp.name} — {emp.department}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
           </div>
         </div>
 
