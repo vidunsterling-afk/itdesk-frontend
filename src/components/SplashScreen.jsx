@@ -7,8 +7,15 @@ export default function SplashScreen() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 3000);
-    return () => clearTimeout(timer);
+    const hasShown = sessionStorage.getItem("splashShown");
+    if (!hasShown) {
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setVisible(false);
+        sessionStorage.setItem("splashShown", "true");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   return (

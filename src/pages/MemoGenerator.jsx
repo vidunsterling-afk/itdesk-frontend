@@ -117,6 +117,12 @@ export default function MemoGenerator() {
     const selectedEmp = employees.find((e) => e._id === selectedEmployee);
     const firstName = selectedEmp?.name.split(" ")[0] || "";
 
+    const totalItems = [
+      ...(employeeAssets || []),
+      ...(manualAssets || []),
+      ...(extraItems || []),
+    ].length;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -137,11 +143,11 @@ export default function MemoGenerator() {
             
             body {
               font-family: 'Source Serif Pro', serif;
-              margin: 40px;
+              margin: 20px 25px;
               color: #1f2937;
               background: white;
-              line-height: 1.6;
-              font-size: 14px;
+              line-height: 1.5;
+              font-size: 13px;
               font-weight: 400;
             }
             
@@ -157,8 +163,8 @@ export default function MemoGenerator() {
               justify-content: space-between;
               align-items: center;
               border-bottom: 2px solid #1d4ed8;
-              padding-bottom: 20px;
-              margin-bottom: 30px;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
             }
             
             .logo-container img {
@@ -186,9 +192,9 @@ export default function MemoGenerator() {
             .memo-title {
               text-align: center;
               font-weight: 700;
-              font-size: 26px;
+              font-size: 20px;
               color: #1d4ed8;
-              margin-bottom: 35px;
+              margin-bottom: 20px;
               letter-spacing: 1px;
               text-transform: uppercase;
             }
@@ -266,18 +272,18 @@ export default function MemoGenerator() {
             .asset-table th {
               background-color: #f8fafc;
               border: 1px solid #d1d5db;
-              padding: 12px;
+              padding: 6px 8px;
               font-weight: 600;
               text-align: left;
               color: #374151;
-              font-size: 13px;
+              font-size: 12px;
             }
             
             .asset-table td {
               border: 1px solid #d1d5db;
-              padding: 12px;
+              padding: 6px 8px;
               color: #4b5563;
-              font-size: 13px;
+              font-size: 12px;
             }
             
             .asset-table tr:nth-child(even) {
@@ -286,10 +292,10 @@ export default function MemoGenerator() {
             
             .section-title {
               font-weight: 600;
-              margin-top: 40px;
-              margin-bottom: 15px;
+              margin-top: 25px;
+              margin-bottom: 8px;
               color: #1d4ed8;
-              font-size: 16px;
+              font-size: 14px;
               border-bottom: 1px solid #e5e7eb;
               padding-bottom: 5px;
             }
@@ -304,7 +310,7 @@ export default function MemoGenerator() {
             
             /* Signature Sections */
             .sender-signature {
-              margin: 60px 0 50px 0;
+              margin: 40px 0 30px 0;
             }
             
             .signature-line {
@@ -328,21 +334,21 @@ export default function MemoGenerator() {
             
             /* Policy Section */
             .policy-section {
-              margin: 40px 0;
-              font-size: 14px;
+              margin: 20px 0;
+              font-size: 12px;
               color: #4b5563;
               white-space: pre-line;
-              line-height: 1.6;
+              line-height: 1.4;
               text-align: justify;
               border-top: 1px solid #e5e7eb;
-              padding-top: 20px;
+              padding-top: 10px;
             }
             
             /* Receiver Signature */
             .receiver-section {
               display: flex;
               justify-content: space-between;
-              margin: 80px 0 50px 0;
+              margin: 50px 0 30px 0;
             }
             
             .signature-box {
@@ -387,18 +393,41 @@ export default function MemoGenerator() {
             }
             
             @media print {
-              body {
-                margin: 25px;
+              @page {
+                size: A4;
+                margin: 10mm;
               }
-              
+
+              body {
+                margin: 10mm;
+                font-size: 12px !important;
+                line-height: 1.3 !important;
+              }
+
               .memo-container {
                 max-width: 100%;
               }
-              
-              .asset-table {
-                page-break-inside: avoid;
+
+              .asset-table th, .asset-table td {
+                padding: 5px 6px !important;
+              }
+
+              .memo-title {
+                font-size: 18px !important;
+                margin-bottom: 10px !important;
+              }
+
+              .section-title {
+                font-size: 13px !important;
+                margin-top: 15px !important;
+              }
+
+              .policy-section {
+                font-size: 11.5px !important;
+                line-height: 1.3 !important;
               }
             }
+
           </style>
         </head>
         <body>
@@ -552,11 +581,26 @@ export default function MemoGenerator() {
 
     printWindow.document.close();
 
-    // Wait for content to load before printing
-    setTimeout(() => {
+    printWindow.onload = () => {
+      const style = printWindow.document.createElement("style");
+      style.innerHTML = `
+    @page { 
+      size: A4;
+      margin: 15mm;
+    }
+    body {
+      zoom: 1;
+    }
+    @media print {
+      ${totalItems > 10 && totalItems <= 15 ? "body { zoom: 0.9; }" : ""}
+      ${totalItems > 15 ? "body { zoom: 0.8; }" : ""}
+    }
+  `;
+      printWindow.document.head.appendChild(style);
+
       printWindow.focus();
       printWindow.print();
-    }, 500);
+    };
   };
 
   return (
