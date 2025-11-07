@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { useContext, useState } from "react";
 import { AuthContext } from "./context/AuthContext.jsx";
 import { Toaster } from "react-hot-toast";
@@ -26,61 +32,29 @@ import AttachmentReport from "./components/AttachmentReport.jsx";
 import AssetView from "./pages/AssetView.jsx";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-import { useLocation } from "react-router-dom";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
-
-  if (loading)
-    return (
-      <motion.div
-        className="flex flex-col items-center justify-center h-screen bg-gray-50 text-gray-700"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <motion.div
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"
-          animate={{
-            rotate: 360,
-          }}
-          transition={{
-            repeat: Infinity,
-            ease: "linear",
-            duration: 1,
-          }}
-        ></motion.div>
-        <motion.p
-          className="text-lg font-medium"
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          Checking session...
-        </motion.p>
-      </motion.div>
-    );
-
+  if (loading) return <p>Checking session...</p>;
   return user ? children : <Navigate to="/login" />;
 }
 
-export default function App() {
+// ✅ create a small inner component that can safely use useLocation
+function AppContent() {
   const { user } = useContext(AuthContext);
   const [isExpanded, setIsExpanded] = useState(user ? false : null);
   const location = useLocation();
   const isPublicAssetView = location.pathname.startsWith("/asset/");
-
   const navbarWidth = isExpanded ? 240 : 80;
 
   return (
-    <BrowserRouter>
+    <>
       {user && !isPublicAssetView && (
         <Navbar setIsExpanded={setIsExpanded} defaultExpanded={false} />
       )}
       <motion.div
         animate={{ marginLeft: user ? navbarWidth : 0 }}
-        initial={{ marginLeft: user ? 80 : 0 }} // start with collapsed width
+        initial={{ marginLeft: user ? 80 : 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="p-4"
       >
@@ -90,10 +64,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<AdminVerify />} />
-
           <Route path="/asset/:id" element={<AssetView />} />
 
-          {/* Protected Routes */}
+          {/* protected routes */}
           <Route
             path="/dashboard"
             element={
@@ -232,6 +205,15 @@ export default function App() {
           />
         </Routes>
       </motion.div>
+    </>
+  );
+}
+
+// ✅ now BrowserRouter wraps everything, so useLocation works fine
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }
