@@ -22,6 +22,7 @@ import FloorPlan from "./components/FloorPlan.jsx";
 import MemoGenerator from "./pages/MemoGenerator.jsx";
 import M365Usage from "./components/M365Usage.jsx";
 import FingerprintAssignmentForm from "./components/FingerprintAssignmentForm.jsx";
+import AttachmentReport from "./components/AttachmentReport.jsx";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 
@@ -210,6 +211,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <FingerprintAssignmentForm />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/datar"
+            element={
+              <PrivateRoute>
+                <AttachmentReport />
               </PrivateRoute>
             }
           />

@@ -14,6 +14,7 @@ import toast, { Toaster } from "react-hot-toast";
 import { IoAddCircle, IoPrint } from "react-icons/io5";
 import { MdEdit } from "react-icons/md";
 import { BsQrCode } from "react-icons/bs";
+import QRCode from "qrcode";
 
 export default function Assets() {
   const [assets, setAssets] = useState([]);
@@ -33,6 +34,20 @@ export default function Assets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [qrAsset, setQrAsset] = useState(null);
+  const [qrImage, setQrImage] = useState("");
+
+  useEffect(() => {
+    if (qrAsset) {
+      const baseUrl = window.location.origin;
+      const qrUrl = `${baseUrl}/asset/${qrAsset._id}`;
+
+      QRCode.toDataURL(qrUrl, { width: 300 }, (err, url) => {
+        if (!err) setQrImage(url);
+      });
+    } else {
+      setQrImage("");
+    }
+  }, [qrAsset]);
 
   const fetchAssets = async () => {
     setLoading(true);
@@ -595,17 +610,20 @@ export default function Assets() {
             </h2>
 
             <div className="flex justify-center mb-4">
-              <img src={qrAsset.qrCode} alt="QR Code" className="w-64 h-64" />
+              {qrImage ? (
+                <img src={qrImage} alt="QR Code" className="w-64 h-64" />
+              ) : (
+                <p>Generating QR...</p>
+              )}
             </div>
 
             <div className="flex gap-4">
               {/* Copy JSON Button */}
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(
-                    JSON.stringify(qrAsset, null, 2)
-                  );
-                  toast.success("Asset JSON copied!");
+                  const qrUrl = `${window.location.origin}/asset/${qrAsset._id}`;
+                  navigator.clipboard.writeText(qrUrl);
+                  toast.success("QR link copied!");
                 }}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
               >
@@ -631,7 +649,8 @@ export default function Assets() {
                 </head>
                 <body>
                   <h2>${qrAsset.name} - QR Code</h2>
-                  <img src="${qrAsset.qrCode}" />
+                  <img src="${qrImage}" />
+                  <p style="margin-top:10px;font-size:14px;color:#333;">${window.location.origin}/asset/${qrAsset._id}</p>
                   <script>
                     window.onload = () => window.print();
                   </script>

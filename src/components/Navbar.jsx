@@ -14,6 +14,7 @@ import {
   FaChevronDown,
   FaChevronRight,
 } from "react-icons/fa";
+import { MdOutline4gPlusMobiledata } from "react-icons/md";
 import { RiFingerprintLine } from "react-icons/ri";
 import { CgMicrosoft } from "react-icons/cg";
 import { FaMapLocation } from "react-icons/fa6";
@@ -172,6 +173,11 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           path: "/attendance",
           label: "Fingerprint",
           icon: <RiFingerprintLine />,
+        },
+        {
+          path: "/datar",
+          label: "D Report",
+          icon: <MdOutline4gPlusMobiledata />,
         },
       ],
     },
