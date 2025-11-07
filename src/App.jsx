@@ -26,6 +26,7 @@ import AttachmentReport from "./components/AttachmentReport.jsx";
 import AssetView from "./pages/AssetView.jsx";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
@@ -67,12 +68,16 @@ function PrivateRoute({ children }) {
 export default function App() {
   const { user } = useContext(AuthContext);
   const [isExpanded, setIsExpanded] = useState(user ? false : null);
+  const location = useLocation();
+  const isPublicAssetView = location.pathname.startsWith("/asset/");
 
   const navbarWidth = isExpanded ? 240 : 80;
 
   return (
     <BrowserRouter>
-      {user && <Navbar setIsExpanded={setIsExpanded} defaultExpanded={false} />}
+      {user && !isPublicAssetView && (
+        <Navbar setIsExpanded={setIsExpanded} defaultExpanded={false} />
+      )}
       <motion.div
         animate={{ marginLeft: user ? navbarWidth : 0 }}
         initial={{ marginLeft: user ? 80 : 0 }} // start with collapsed width
@@ -85,6 +90,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<AdminVerify />} />
+
           <Route path="/asset/:id" element={<AssetView />} />
 
           {/* Protected Routes */}

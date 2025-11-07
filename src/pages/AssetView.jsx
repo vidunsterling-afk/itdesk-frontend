@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getAssetById } from "../api/asset";
+import { getPublicAssetById } from "../api/asset";
 
 export default function AssetView() {
   const { id } = useParams();
@@ -10,7 +10,7 @@ export default function AssetView() {
   useEffect(() => {
     const fetchAsset = async () => {
       try {
-        const res = await getAssetById(id);
+        const res = await getPublicAssetById(id);
         setAsset(res.data);
       } catch (err) {
         console.error("Failed to fetch asset:", err);

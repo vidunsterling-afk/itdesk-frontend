@@ -13,6 +13,9 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
+export const getPublicAssetById = (id) =>
+  API.get(`/public/${id}`, { headers: {} });
+
 // Asset API functions
 export const getAssets = () => API.get("/"); // Get all assets
 export const getAssetById = (id) => API.get(`/${id}`); // Get single asset
