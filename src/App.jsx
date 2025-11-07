@@ -23,6 +23,7 @@ import MemoGenerator from "./pages/MemoGenerator.jsx";
 import M365Usage from "./components/M365Usage.jsx";
 import FingerprintAssignmentForm from "./components/FingerprintAssignmentForm.jsx";
 import AttachmentReport from "./components/AttachmentReport.jsx";
+import AssetView from "./pages/AssetView.jsx";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify" element={<AdminVerify />} />
+          <Route path="/asset/:id" element={<AssetView />} />
 
           {/* Protected Routes */}
           <Route
