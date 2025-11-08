@@ -3,7 +3,7 @@ import axios from "axios";
 const baseURL = import.meta.env.VITE_BACKEND_URI;
 
 const API = axios.create({
-  baseURL: `${baseURL}/api/auth`,
+  baseURL: `${baseURL}/api`,
 });
 
 API.interceptors.request.use((config) => {
@@ -12,6 +12,11 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-export const registerUser = (data) => API.post("/register", data);
-export const loginUser = (data) => API.post("/login", data);
-export const getProfile = () => API.get("/profile");
+export const registerUser = (data) => API.post("/auth/register", data);
+export const loginUser = (data) => API.post("/auth/login", data);
+export const getProfile = () => API.get("/auth/profile");
+
+export const getUsers = () => API.get("/users");
+export const getUserById = (id) => API.get(`/users/${id}`);
+export const updateUser = (id, data) => API.put(`/users/${id}`, data);
+export const deleteUser = (id) => API.delete(`/users/${id}`);

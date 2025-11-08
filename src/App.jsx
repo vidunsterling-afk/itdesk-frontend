@@ -30,6 +30,7 @@ import M365Usage from "./components/M365Usage.jsx";
 import FingerprintAssignmentForm from "./components/FingerprintAssignmentForm.jsx";
 import AttachmentReport from "./components/AttachmentReport.jsx";
 import AssetView from "./pages/AssetView.jsx";
+import UserManagement from "./pages/UserManagement.jsx";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 
@@ -39,7 +40,6 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" />;
 }
 
-// ✅ create a small inner component that can safely use useLocation
 function AppContent() {
   const { user } = useContext(AuthContext);
   const [isExpanded, setIsExpanded] = useState(user ? false : null);
@@ -72,6 +72,14 @@ function AppContent() {
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/usermanagement"
+            element={
+              <PrivateRoute>
+                <UserManagement />
               </PrivateRoute>
             }
           />

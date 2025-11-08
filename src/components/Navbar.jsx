@@ -13,11 +13,12 @@ import {
   FaClock,
   FaChevronDown,
   FaChevronRight,
+  FaUserCog,
 } from "react-icons/fa";
 import { MdOutline4gPlusMobiledata } from "react-icons/md";
 import { RiFingerprintLine } from "react-icons/ri";
 import { CgMicrosoft } from "react-icons/cg";
-import { FaMapLocation } from "react-icons/fa6";
+import { FaMapLocation, FaUsersRectangle } from "react-icons/fa6";
 import { CiMemoPad } from "react-icons/ci";
 import { LuCalendarClock } from "react-icons/lu";
 import { GiAutoRepair } from "react-icons/gi";
@@ -101,6 +102,19 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       path: "/dashboard",
       label: "Dashboard",
       icon: <FaTachometerAlt />,
+    },
+    {
+      id: "management",
+      type: "section",
+      label: "Management",
+      icon: <FaUsersRectangle />,
+      children: [
+        {
+          path: "/usermanagement",
+          label: "User Management",
+          icon: <FaUserCog />,
+        },
+      ],
     },
     {
       id: "employees-assets",
