@@ -27,15 +27,108 @@ import { MdCellWifi } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { jwtDecode } from "jwt-decode";
+import { getProfile, getServerPing } from "../api/auth.js";
+
+function TopProfileNav() {
+  const [show, setShow] = useState(true);
+  const [lastScroll, setLastScroll] = useState(0);
+  const seeds = ["Liam", "Jade", "Adrian", "Sarah", "Aidan"];
+  const [seed, setSeed] = useState("");
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+
+    userProfile();
+  }, []);
+
+  useEffect(() => {
+    const randomSeed = seeds[Math.floor(Math.random() * seeds.length)];
+    setSeed(randomSeed);
+  }, []);
+
+  const src = `https://api.dicebear.com/9.x/open-peeps/svg?seed=${seed}`;
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScroll = window.scrollY;
+      if (currentScroll > lastScroll && currentScroll > 50) {
+        setShow(false);
+      } else {
+        setShow(true);
+      }
+      setLastScroll(currentScroll);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScroll]);
+
+  return (
+    <motion.div
+      initial={{ y: 0, opacity: 1 }}
+      animate={{ y: show ? 0 : -120, opacity: show ? 1 : 0 }}
+      transition={{ type: "spring", stiffness: 250, damping: 25 }}
+      className="fixed top-4 right-10 z-50"
+    >
+      <div className="bg-gray-800 text-white rounded-full px-6 py-2 flex items-center gap-3 shadow-lg cursor-pointer hover:bg-gray-700 transition-all">
+        <img
+          src={src}
+          alt="Profile"
+          className="w-8 h-8 rounded-full border-2 border-blue-500"
+        />
+        <div className="flex flex-col">
+          <span className="font-semibold text-sm">
+            {profile?.username || "Guest"}
+          </span>
+          <span className="text-xs text-gray-300">
+            {profile ? (profile.isAdmin ? "Administrator" : "User") : ""}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
   const { user, logout } = useContext(AuthContext);
+  const [showPing, setShowPing] = useState(false);
+  const [ping, setPing] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [isHovered, setIsHovered] = useState(defaultExpanded);
   const [timeLeft, setTimeLeft] = useState(null);
   const [timeLeftExpanded, setTimeLeftExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+
+  useEffect(() => {
+    const fetchPing = async () => {
+      try {
+        const data = await getServerPing();
+        if (data) setPing(data.latency);
+      } catch {
+        setPing(null);
+      }
+    };
+
+    fetchPing();
+
+    const interval = setInterval(() => {
+      setShowPing((prev) => !prev);
+      fetchPing();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // console.log(ping);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -354,6 +447,9 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
 
   return (
     <>
+      {/* Top-Center Profile Nav */}
+      <TopProfileNav />
+
       {/* Sidebar */}
       <motion.aside
         onMouseEnter={handleMouseEnter}
@@ -465,11 +561,38 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           boxShadow: "0px 4px 20px rgba(255, 255, 255, 0.2)",
         }}
       >
-        <div className="w-11 h-11 flex items-center justify-center bg-gray-800 flex-shrink-0">
-          <FaClock
-            className={`text-lg transition-colors duration-500 ${getClockColor()}`}
-          />
-        </div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="w-11 h-11 flex items-center justify-center bg-gray-800 flex-shrink-0"
+        >
+          <AnimatePresence mode="wait">
+            {showPing ? (
+              <motion.span
+                key="ping"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-sm font-bold"
+              >
+                {ping !== null ? `${ping}ms` : "..."}
+              </motion.span>
+            ) : (
+              <motion.span
+                key="clock"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <FaClock
+                  className={`text-lg transition-colors duration-500 ${getClockColor()}`}
+                />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         <motion.div
           initial={false}

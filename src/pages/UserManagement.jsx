@@ -97,7 +97,12 @@ export default function UserManagement() {
       </motion.div>
     );
 
-  if (error) return <p className="text-center text-red-500 mt-10">{error}</p>;
+  if (error)
+    return (
+      <div className="max-w-md mx-auto mt-10 p-4 bg-red-100 text-red-700 rounded-lg shadow text-center">
+        {error}
+      </div>
+    );
 
   return (
     <div className="max-w-6xl mx-auto p-6">
