@@ -22,11 +22,8 @@ export const updateUser = (id, data) => API.put(`/users/${id}`, data);
 export const deleteUser = (id) => API.delete(`/users/${id}`);
 
 export const getServerPing = async () => {
-  try {
-    const res = await API.get("/ping");
-    return res.data;
-  } catch (err) {
-    console.error("Ping failed:", err);
-    return null;
-  }
+  const start = Date.now();
+  await API.get("/ping");
+  const latency = Date.now() - start;
+  return { latency };
 };

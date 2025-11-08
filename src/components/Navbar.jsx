@@ -575,7 +575,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-sm font-bold"
+                className="text-[10px] font-bold"
               >
                 {ping !== null ? `${ping}ms` : "..."}
               </motion.span>
