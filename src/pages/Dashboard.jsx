@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getAssets } from "../api/asset.js";
 import { getEmployees } from "../api/employee.js";
 import { getSoftware } from "../api/software.js";
@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { RiBillFill } from "react-icons/ri";
 import toast from "react-hot-toast";
+import React from "react";
 
 export default function Dashboard() {
   const [assets, setAssets] = useState([]);
@@ -28,17 +29,10 @@ export default function Dashboard() {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filter states
   const [activeAssetFilter, setActiveAssetFilter] = useState("All");
   const [activeEmployeeFilter, setActiveEmployeeFilter] = useState("All");
   const [activeSoftwareFilter, setActiveSoftwareFilter] = useState("All");
   const [activeBillFilter, setActiveBillFilter] = useState("All");
-
-  // Counts for subcategories
-  const [assetCounts, setAssetCounts] = useState({});
-  const [employeeCounts, setEmployeeCounts] = useState({});
-  const [softwareCounts, setSoftwareCounts] = useState({});
-  const [billCounts, setBillCounts] = useState({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -63,11 +57,10 @@ export default function Dashboard() {
       setBills(billsRes.data);
       setPendingCount(pendingRes.data.count);
 
-      // Filter reminders to this week
       const now = new Date();
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay())); // Sunday
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
       const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(endOfWeek.getDate() + 6); // Saturday
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
 
       const events = remRes.data
         .filter((r) => {
@@ -105,47 +98,85 @@ export default function Dashboard() {
     </motion.div>
   );
 
-  // Compute counts for filters
-  useEffect(() => {
-    if (!assets.length) return;
-
-    // Assets by category
+  // --- Memoized counts ---
+  const assetCounts = useMemo(() => {
     const types = ["Laptop", "PC", "Dongle", "Other"];
-    const assetCountObj = { All: assets.length };
+    const obj = { All: assets.length };
     types.forEach((t) => {
-      assetCountObj[t] = assets.filter((a) => a.category === t).length;
+      obj[t] = assets.filter((a) => a.category === t).length;
     });
-    setAssetCounts(assetCountObj);
+    return obj;
+  }, [assets]);
 
-    // Employees
-    const empCountObj = {
+  const employeeCounts = useMemo(
+    () => ({
       All: employees.length,
       Assigned: employees.filter((e) => e.assignedAssets?.length > 0).length,
       Unassigned: employees.filter((e) => !e.assignedAssets?.length).length,
-    };
-    setEmployeeCounts(empCountObj);
+    }),
+    [employees]
+  );
 
-    // Software
-    const softCountObj = {
+  const today = useMemo(() => new Date(), []);
+  const softwareWithStatus = useMemo(
+    () =>
+      software.map((s) => ({
+        ...s,
+        isExpired: new Date(s.expiryDate) < today,
+      })),
+    [software, today]
+  );
+
+  const softwareCounts = useMemo(
+    () => ({
       All: software.length,
-      Active: software.filter((s) => new Date(s.expiryDate) >= new Date())
-        .length,
-      Expired: software.filter((s) => new Date(s.expiryDate) < new Date())
-        .length,
-    };
-    setSoftwareCounts(softCountObj);
+      Active: software.filter((s) => new Date(s.expiryDate) >= today).length,
+      Expired: software.filter((s) => new Date(s.expiryDate) < today).length,
+    }),
+    [software, today]
+  );
 
-    // Bills
-    const billCountObj = {
+  const billCounts = useMemo(
+    () => ({
       All: pendingCount,
-      Overdue: bills.filter((b) => !b.paid && new Date(b.dueDate) < new Date())
+      Overdue: bills.filter((b) => !b.paid && new Date(b.dueDate) < today)
         .length,
-      NonOverdue: bills.filter(
-        (b) => !b.paid && new Date(b.dueDate) >= new Date()
-      ).length,
-    };
-    setBillCounts(billCountObj);
-  }, [assets, employees, software, pendingCount, bills]);
+      NonOverdue: bills.filter((b) => !b.paid && new Date(b.dueDate) >= today)
+        .length,
+    }),
+    [pendingCount, bills, today]
+  );
+
+  // --- Callback handlers ---
+  const handleAssetFilter = useCallback(
+    (type) => setActiveAssetFilter(type),
+    []
+  );
+  const handleEmployeeFilter = useCallback(
+    (status) => setActiveEmployeeFilter(status),
+    []
+  );
+  const handleSoftwareFilter = useCallback(
+    (status) => setActiveSoftwareFilter(status),
+    []
+  );
+  const handleBillFilter = useCallback(
+    (status) => setActiveBillFilter(status),
+    []
+  );
+
+  const handleEventClick = useCallback((info) => {
+    toast.custom(
+      // eslint-disable-next-line no-unused-vars
+      (t) => (
+        <ReminderToast
+          title={info.event.title}
+          date={new Date(info.event.start).toLocaleDateString()}
+        />
+      ),
+      { duration: 5000, position: "top-right" }
+    );
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -161,6 +192,146 @@ export default function Dashboard() {
       transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" },
     }),
   };
+
+  // --- Memoized Table Components ---
+  const AssetsTable = React.memo(({ data }) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100 text-gray-700 text-left">
+            <th className="p-3">Asset Tag</th>
+            <th className="p-3">Name</th>
+            <th className="p-3">Category</th>
+            <th className="p-3">Status</th>
+            <th className="p-3">Assigned To</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((a, i) => (
+            <tr
+              key={a._id}
+              className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
+                i % 2 ? "bg-gray-50" : "bg-white"
+              }`}
+            >
+              <td className="p-3">{a.assetTag}</td>
+              <td className="p-3">{a.name}</td>
+              <td className="p-3">{a.category}</td>
+              <td className="p-3">
+                {a.status === "Available" ? (
+                  <FaCheckCircle
+                    className="text-green-500 text-lg"
+                    title="Available"
+                  />
+                ) : (
+                  <FaClock
+                    className="text-yellow-500 text-lg"
+                    title="Assigned"
+                  />
+                )}
+              </td>
+              <td className="p-3">{a.assignedTo?.name || "-"}</td>
+            </tr>
+          ))}
+          {data.length === 0 && (
+            <tr>
+              <td colSpan="5" className="text-center p-3 text-gray-500">
+                No assets found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  ));
+
+  const EmployeesTable = React.memo(({ data }) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100 text-gray-700 text-left">
+            <th className="p-3">Name</th>
+            <th className="p-3">Email</th>
+            <th className="p-3">Department</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((emp, i) => (
+            <tr
+              key={emp._id}
+              className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
+                i % 2 ? "bg-gray-50" : "bg-white"
+              }`}
+            >
+              <td className="p-3">{emp.name}</td>
+              <td className="p-3">{emp.email}</td>
+              <td className="p-3">{emp.department}</td>
+            </tr>
+          ))}
+          {data.length === 0 && (
+            <tr>
+              <td colSpan="3" className="text-center p-3 text-gray-500">
+                No employees found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  ));
+
+  const SoftwareTable = React.memo(({ data }) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-gray-100 text-gray-700 text-left">
+            <th className="p-3">Name</th>
+            <th className="p-3">Vendor</th>
+            <th className="p-3">Expiry</th>
+            <th className="p-3">Assigned To</th>
+            <th className="p-3">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((s, i) => (
+            <tr
+              key={s._id}
+              className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
+                i % 2 ? "bg-gray-50" : "bg-white"
+              }`}
+            >
+              <td className="p-3">{s.name}</td>
+              <td className="p-3">{s.vendor}</td>
+              <td className="p-3">
+                {new Date(s.expiryDate).toLocaleDateString()}
+              </td>
+              <td className="p-3">{s.assignedTo?.name || "-"}</td>
+              <td className="p-3">
+                {s.isExpired ? (
+                  <FaTimesCircle
+                    className="text-red-500 text-lg"
+                    title="Expired"
+                  />
+                ) : (
+                  <FaCheckCircle
+                    className="text-green-500 text-lg"
+                    title="Active"
+                  />
+                )}
+              </td>
+            </tr>
+          ))}
+          {data.length === 0 && (
+            <tr>
+              <td colSpan="5" className="text-center p-3 text-gray-500">
+                No software found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  ));
 
   return (
     <div className="p-6">
@@ -195,9 +366,9 @@ export default function Dashboard() {
         </motion.div>
       ) : (
         <>
-          {/* ✅ Summary Cards with Filter Buttons */}
+          {/* Summary Cards with Filters */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {/* Assets Card */}
+            {/* Assets */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -216,7 +387,7 @@ export default function Dashboard() {
                 {Object.keys(assetCounts).map((type) => (
                   <button
                     key={type}
-                    onClick={() => setActiveAssetFilter(type)}
+                    onClick={() => handleAssetFilter(type)}
                     className={`px-2 py-1 rounded-full text-sm font-medium ${
                       activeAssetFilter === type
                         ? "bg-blue-500 text-white"
@@ -229,7 +400,7 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* Employees Card */}
+            {/* Employees */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -248,7 +419,7 @@ export default function Dashboard() {
                 {Object.keys(employeeCounts).map((status) => (
                   <button
                     key={status}
-                    onClick={() => setActiveEmployeeFilter(status)}
+                    onClick={() => handleEmployeeFilter(status)}
                     className={`px-2 py-1 rounded-full text-sm font-medium ${
                       activeEmployeeFilter === status
                         ? "bg-green-500 text-white"
@@ -261,7 +432,7 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* Software Card */}
+            {/* Software */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -280,7 +451,7 @@ export default function Dashboard() {
                 {Object.keys(softwareCounts).map((status) => (
                   <button
                     key={status}
-                    onClick={() => setActiveSoftwareFilter(status)}
+                    onClick={() => handleSoftwareFilter(status)}
                     className={`px-2 py-1 rounded-full text-sm font-medium ${
                       activeSoftwareFilter === status
                         ? "bg-purple-500 text-white"
@@ -293,7 +464,7 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* Bill Reminders Card */}
+            {/* Bill Reminders */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -314,7 +485,7 @@ export default function Dashboard() {
                 {Object.keys(billCounts).map((status) => (
                   <button
                     key={status}
-                    onClick={() => setActiveBillFilter(status)}
+                    onClick={() => handleBillFilter(status)}
                     className={`px-2 py-1 rounded-full text-sm font-medium ${
                       activeBillFilter === status
                         ? "bg-red-500 text-white"
@@ -328,236 +499,66 @@ export default function Dashboard() {
             </motion.div>
           </div>
 
-          {/* Weekly Maintenance Calendar */}
+          {/* Weekly Calendar */}
           <div className="bg-white shadow-lg rounded-2xl p-6 mb-10 w-full">
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gray-800">
-                Weekly Maintenance
+                Weekly Reminders
               </h3>
-              <p className="text-gray-500 text-sm">
-                {new Date().toLocaleDateString()} -{" "}
-                {new Date(
-                  new Date().setDate(new Date().getDate() + 6)
-                ).toLocaleDateString()}
-              </p>
             </div>
-
-            {/* Calendar */}
-            <div className="overflow-x-auto">
-              <FullCalendar
-                plugins={[dayGridPlugin]}
-                initialView="dayGridWeek"
-                height={200} // slightly taller for readability
-                contentHeight="auto"
-                events={reminders}
-                headerToolbar={false} // clean look
-                validRange={{ start: new Date() }}
-                dayHeaderClassNames="text-gray-700 font-semibold"
-                dayCellClassNames="text-gray-700 bg-gray-50 rounded-lg" // subtle rounded cells
-                eventClassNames={(info) =>
-                  info.event.backgroundColor === "#4caf50"
-                    ? "bg-green-500 text-white rounded-lg px-2 py-1 text-xs"
-                    : "bg-red-500 text-white rounded-lg px-2 py-1 text-xs"
-                }
-                eventClick={(info) => {
-                  toast.custom(
-                    // eslint-disable-next-line no-unused-vars
-                    (t) => (
-                      <ReminderToast
-                        title={info.event.title}
-                        date={new Date(info.event.start).toLocaleDateString()}
-                      />
-                    ),
-                    {
-                      duration: 5000,
-                      position: "top-right",
-                    }
-                  );
-                }}
-                eventDisplay="block" // blocks with background color
-              />
-            </div>
+            <FullCalendar
+              plugins={[dayGridPlugin]}
+              initialView="dayGridWeek"
+              events={reminders}
+              eventClick={handleEventClick}
+              height={400}
+              headerToolbar={{
+                start: "title",
+                center: "",
+                end: "prev,next today",
+              }}
+            />
           </div>
 
-          {/* Latest Tables */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Assets Table */}
+          {/* Latest Data Tables */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <motion.div
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              custom={0.2}
-              className="bg-white shadow-md rounded-xl p-5"
+              custom={0.8}
+              className="bg-white shadow-lg rounded-2xl p-6"
             >
-              <h3 className="text-xl font-semibold mb-3 text-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Latest Assets
               </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-left">
-                      <th className="p-3">Asset Tag</th>
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3">Assigned To</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latest(assets).map((a, i) => (
-                      <tr
-                        key={a._id}
-                        className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
-                          i % 2 ? "bg-gray-50" : "bg-white"
-                        }`}
-                      >
-                        <td className="p-3">{a.assetTag}</td>
-                        <td className="p-3">{a.name}</td>
-                        <td className="p-3">{a.category}</td>
-                        <td className="p-3">
-                          {a.status === "Available" ? (
-                            <FaCheckCircle
-                              className="text-green-500 text-lg"
-                              title="Available"
-                            />
-                          ) : (
-                            <FaClock
-                              className="text-yellow-500 text-lg"
-                              title="Assigned"
-                            />
-                          )}
-                        </td>
-                        <td className="p-3">{a.assignedTo?.name || "-"}</td>
-                      </tr>
-                    ))}
-                    {assets.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan="5"
-                          className="text-center p-3 text-gray-500"
-                        >
-                          No assets found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <AssetsTable data={latest(assets)} />
             </motion.div>
 
-            {/* Employees Table */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              custom={0.4}
-              className="bg-white shadow-md rounded-xl p-5"
+              custom={1}
+              className="bg-white shadow-lg rounded-2xl p-6"
             >
-              <h3 className="text-xl font-semibold mb-3 text-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Latest Employees
               </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-left">
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Email</th>
-                      <th className="p-3">Department</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latest(employees).map((emp, i) => (
-                      <tr
-                        key={emp._id}
-                        className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
-                          i % 2 ? "bg-gray-50" : "bg-white"
-                        }`}
-                      >
-                        <td className="p-3">{emp.name}</td>
-                        <td className="p-3">{emp.email}</td>
-                        <td className="p-3">{emp.department}</td>
-                      </tr>
-                    ))}
-                    {employees.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan="3"
-                          className="text-center p-3 text-gray-500"
-                        >
-                          No employees found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <EmployeesTable data={latest(employees)} />
             </motion.div>
 
-            {/* Software Table */}
             <motion.div
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              custom={0.6}
-              className="bg-white shadow-md rounded-xl p-5 lg:col-span-2"
+              custom={1.2}
+              className="bg-white shadow-lg rounded-2xl p-6 lg:col-span-2"
             >
-              <h3 className="text-xl font-semibold mb-3 text-gray-800">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">
                 Latest Software
               </h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-700 text-left">
-                      <th className="p-3">Name</th>
-                      <th className="p-3">Vendor</th>
-                      <th className="p-3">Expiry</th>
-                      <th className="p-3">Assigned To</th>
-                      <th className="p-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {latest(software).map((s, i) => (
-                      <tr
-                        key={s._id}
-                        className={`border-t hover:bg-gray-200 transition-colors duration-200 cursor-pointer ${
-                          i % 2 ? "bg-gray-50" : "bg-white"
-                        }`}
-                      >
-                        <td className="p-3">{s.name}</td>
-                        <td className="p-3">{s.vendor}</td>
-                        <td className="p-3">
-                          {new Date(s.expiryDate).toLocaleDateString()}
-                        </td>
-                        <td className="p-3">{s.assignedTo?.name || "-"}</td>
-                        <td className="p-3">
-                          {new Date(s.expiryDate) < new Date() ? (
-                            <FaTimesCircle
-                              className="text-red-500 text-lg"
-                              title="Expired"
-                            />
-                          ) : (
-                            <FaCheckCircle
-                              className="text-green-500 text-lg"
-                              title="Active"
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {software.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan="5"
-                          className="text-center p-3 text-gray-500"
-                        >
-                          No software found
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <SoftwareTable data={latest(softwareWithStatus)} />
             </motion.div>
           </div>
         </>

@@ -26,15 +26,39 @@ import { MdCellWifi } from "react-icons/md";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import { jwtDecode } from "jwt-decode";
 import { getProfile, getServerPing } from "../api/auth.js";
 
 function TopProfileNav() {
+  // eslint-disable-next-line no-unused-vars
   const [show, setShow] = useState(true);
   const [lastScroll, setLastScroll] = useState(0);
   const seeds = ["Liam", "Jade", "Adrian", "Sarah", "Aidan"];
   const [seed, setSeed] = useState("");
   const [profile, setProfile] = useState(null);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    let timer;
+
+    const resetTimer = () => {
+      setIsVisible(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setIsVisible(false), 3000);
+    };
+
+    window.addEventListener("keydown", resetTimer);
+    window.addEventListener("scroll", resetTimer);
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", resetTimer);
+      window.removeEventListener("scroll", resetTimer);
+    };
+  }, []);
 
   useEffect(() => {
     const userProfile = async () => {
@@ -42,7 +66,7 @@ function TopProfileNav() {
         const res = await getProfile();
         setProfile(res.data);
       } catch (err) {
-        console.error("Failed to fetch profile:", err);
+        toast.error(`Failed to fetch profile: ${err}`);
       }
     };
 
@@ -74,7 +98,11 @@ function TopProfileNav() {
   return (
     <motion.div
       initial={{ y: 0, opacity: 1 }}
-      animate={{ y: show ? 0 : -120, opacity: show ? 1 : 0 }}
+      animate={{
+        y: isVisible ? 0 : -120,
+        opacity: isVisible ? 1 : 0,
+        pointerEvents: isVisible ? "auto" : "none",
+      }}
       transition={{ type: "spring", stiffness: 250, damping: 25 }}
       className="fixed top-4 right-10 z-50"
     >
@@ -107,6 +135,20 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
   const [timeLeft, setTimeLeft] = useState(null);
   const [timeLeftExpanded, setTimeLeftExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   useEffect(() => {
     const fetchPing = async () => {
@@ -127,8 +169,6 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
 
     return () => clearInterval(interval);
   }, []);
-
-  // console.log(ping);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -206,6 +246,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           path: "/usermanagement",
           label: "User Management",
           icon: <FaUserCog />,
+          adminOnly: true, // restricted
         },
       ],
     },
@@ -215,21 +256,9 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       label: "Employee & Assets",
       icon: <FaUsers />,
       children: [
-        {
-          path: "/employees",
-          label: "Employees",
-          icon: <FaUsers />,
-        },
-        {
-          path: "/assets",
-          label: "Assets",
-          icon: <FaBoxOpen />,
-        },
-        {
-          path: "/assign-assets",
-          label: "Assign Assets",
-          icon: <FaTasks />,
-        },
+        { path: "/employees", label: "Employees", icon: <FaUsers /> },
+        { path: "/assets", label: "Assets", icon: <FaBoxOpen /> },
+        { path: "/assign-assets", label: "Assign Assets", icon: <FaTasks /> },
       ],
     },
     {
@@ -238,21 +267,9 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       label: "IT Resources",
       icon: <FaLaptop />,
       children: [
-        {
-          path: "/software",
-          label: "Software",
-          icon: <FaLaptop />,
-        },
-        {
-          path: "/data",
-          label: "Data",
-          icon: <MdCellWifi />,
-        },
-        {
-          path: "/m365",
-          label: "M365",
-          icon: <CgMicrosoft />,
-        },
+        { path: "/software", label: "Software", icon: <FaLaptop /> },
+        { path: "/data", label: "Data", icon: <MdCellWifi /> },
+        { path: "/m365", label: "M365", icon: <CgMicrosoft /> },
       ],
     },
     {
@@ -261,11 +278,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       label: "Operations",
       icon: <GiAutoRepair />,
       children: [
-        {
-          path: "/repair",
-          label: "Repair",
-          icon: <GiAutoRepair />,
-        },
+        { path: "/repair", label: "Repair", icon: <GiAutoRepair /> },
         {
           path: "/employee-maintenance",
           label: "Maintenance",
@@ -294,24 +307,14 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       label: "Documents",
       icon: <CiMemoPad />,
       children: [
-        {
-          path: "/tags",
-          label: "Tags",
-          icon: <FaTags />,
-        },
-        {
-          path: "/memo",
-          label: "Memorandum",
-          icon: <CiMemoPad />,
-        },
+        { path: "/tags", label: "Tags", icon: <FaTags /> },
+        { path: "/memo", label: "Memorandum", icon: <CiMemoPad /> },
       ],
     },
   ];
 
   const isNavItemActive = (path, children = []) => {
-    if (path) {
-      return location.pathname.startsWith(path);
-    }
+    if (path) return location.pathname.startsWith(path);
     return children.some((child) => location.pathname.startsWith(child.path));
   };
 
@@ -322,31 +325,27 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
     const pl = level * 12 + 12;
 
     if (item.type === "single") {
+      const isRestricted = item.adminOnly && !profile?.isAdmin;
       return (
         <Link
           key={item.path}
-          to={item.disabled ? "#" : item.path}
+          to={isRestricted ? "#" : item.path}
           onClick={(e) => {
-            if (item.disabled) {
+            if (isRestricted) {
               e.preventDefault();
-              toast.error(`${item.label} is under maintenance 🛠️`, {
-                style: {
-                  borderRadius: "8px",
-                  background: "#333",
-                  color: "#fff",
-                },
+              Swal.fire({
+                icon: "error",
+                title: "Access Denied",
+                text: "Admin Only!",
+                confirmButtonColor: "#d33",
               });
             }
           }}
           className={`relative flex items-center gap-3 px-3 py-2 h-10 rounded-lg font-medium transition-all duration-200 group overflow-hidden ${
-            isActive
+            isActive && !isRestricted
               ? "bg-blue-600 text-white shadow-lg"
               : "text-gray-300 hover:bg-gray-800 hover:text-blue-400"
-          } ${
-            item.disabled
-              ? "opacity-50 cursor-not-allowed hover:bg-gray-900 hover:text-gray-400"
-              : ""
-          }`}
+          } ${isRestricted ? "text-red-500 hover:bg-gray-900" : ""}`}
           style={{ paddingLeft: `${pl}px` }}
         >
           <span className="text-lg flex-shrink-0">{item.icon}</span>
@@ -364,7 +363,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
             )}
           </AnimatePresence>
 
-          {isActive && !item.disabled && (
+          {isActive && !isRestricted && (
             <motion.div
               layoutId="activeIndicator"
               className="absolute left-0 top-0 h-full w-1 bg-blue-400 rounded-r-md"
@@ -447,10 +446,8 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
 
   return (
     <>
-      {/* Top-Center Profile Nav */}
       <TopProfileNav />
 
-      {/* Sidebar */}
       <motion.aside
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -464,7 +461,6 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
         }}
         className="fixed top-0 left-0 h-screen bg-gray-900 text-white flex flex-col shadow-xl z-50"
       >
-        {/* Header / Logo */}
         <div className="flex items-center justify-center h-16 border-b border-gray-800">
           <AnimatePresence mode="wait">
             {expanded ? (
@@ -493,12 +489,10 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           </AnimatePresence>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 flex flex-col p-4 gap-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
           {navStructure.map((item) => renderNavItem(item))}
         </nav>
 
-        {/* Bottom Buttons */}
         <div className="p-4 border-t border-gray-800 flex flex-col gap-2">
           <button
             onClick={() => navigate("/settings")}
@@ -542,7 +536,6 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
         </div>
       </motion.aside>
 
-      {/* Session Expiry */}
       <motion.div
         className="fixed bottom-4 right-4 bg-gray-800 text-white text-sm shadow-lg cursor-pointer flex items-center z-[9999] overflow-hidden rounded-full"
         onMouseEnter={() => setTimeLeftExpanded(true)}
