@@ -17,8 +17,8 @@ import {
   FaClock,
 } from "react-icons/fa";
 import { RiBillFill } from "react-icons/ri";
-import toast from "react-hot-toast";
 import React from "react";
+import Swal from "sweetalert2";
 
 export default function Dashboard() {
   const [assets, setAssets] = useState([]);
@@ -84,19 +84,27 @@ export default function Dashboard() {
     }
   };
 
-  const ReminderToast = ({ title, date }) => (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      className="bg-white shadow-lg rounded-xl p-4 border-l-4 border-blue-500 max-w-sm"
-    >
-      <p className="font-semibold text-gray-800">🔔 Reminder</p>
-      <p className="text-gray-700 mt-1">{title}</p>
-      <p className="text-gray-500 text-sm mt-1">{date}</p>
-    </motion.div>
-  );
+  const handleEventClick = useCallback((info) => {
+    Swal.fire({
+      title: "🔔 Reminder",
+      html: `
+      <strong>${info.event.title}</strong><br/>
+      <span style="color: gray;">${new Date(
+        info.event.start
+      ).toLocaleString()}</span>
+    `,
+      icon: "info",
+      confirmButtonText: "Got it!",
+      confirmButtonColor: "#3085d6",
+      background: "#f9fafb",
+      showClass: {
+        popup: "animate__animated animate__fadeInDown",
+      },
+      hideClass: {
+        popup: "animate__animated animate__fadeOutUp",
+      },
+    });
+  }, []);
 
   // --- Memoized counts ---
   const assetCounts = useMemo(() => {
@@ -164,19 +172,6 @@ export default function Dashboard() {
     (status) => setActiveBillFilter(status),
     []
   );
-
-  const handleEventClick = useCallback((info) => {
-    toast.custom(
-      // eslint-disable-next-line no-unused-vars
-      (t) => (
-        <ReminderToast
-          title={info.event.title}
-          date={new Date(info.event.start).toLocaleDateString()}
-        />
-      ),
-      { duration: 5000, position: "top-right" }
-    );
-  }, []);
 
   useEffect(() => {
     fetchData();

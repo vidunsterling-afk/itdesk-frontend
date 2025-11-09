@@ -1,12 +1,33 @@
 import { useState, useEffect } from "react";
 import { uploadReport, getReports } from "../api/reportApi";
+import toast from "react-hot-toast";
+import { getProfile } from "../api/auth.js";
 
 export default function AttachmentReport() {
   const [parsedData, setParsedData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
-  const [view, setView] = useState("upload"); // upload | history
+  const [view, setView] = useState("upload");
   const [search, setSearch] = useState("");
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+
+        if (!res.data?.isAdmin) {
+          setView("history");
+          fetchHistory();
+        }
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   // fetch history when switched to history view
   useEffect(() => {
@@ -19,6 +40,7 @@ export default function AttachmentReport() {
       setHistory(res.data);
     } catch (err) {
       console.error("Error fetching history:", err);
+      toast.error("Error fetching history");
     }
   };
 
@@ -52,15 +74,15 @@ export default function AttachmentReport() {
   };
 
   const handleUpload = async () => {
-    if (!parsedData.length) return alert("No data to upload!");
+    if (!parsedData.length) return toast.error("No data to upload!");
     setLoading(true);
     try {
       await uploadReport(parsedData);
-      alert("✅ Uploaded successfully!");
+      toast.success("Uploaded successfully!");
       setParsedData([]);
     } catch (err) {
       console.error(err);
-      alert("❌ Upload failed!");
+      toast.error("Upload failed!");
     } finally {
       setLoading(false);
     }
@@ -77,14 +99,16 @@ export default function AttachmentReport() {
       <div className="flex justify-between mb-4 items-center">
         <h1 className="text-2xl font-bold">Attachment Report Manager</h1>
         <div className="space-x-2">
-          <button
-            onClick={() => setView("upload")}
-            className={`px-4 py-2 rounded-lg ${
-              view === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-          >
-            Upload
-          </button>
+          {profile?.isAdmin && (
+            <button
+              onClick={() => setView("upload")}
+              className={`px-4 py-2 rounded-lg ${
+                view === "upload" ? "bg-blue-600 text-white" : "bg-gray-200"
+              }`}
+            >
+              Upload
+            </button>
+          )}
           <button
             onClick={() => setView("history")}
             className={`px-4 py-2 rounded-lg ${
@@ -97,7 +121,7 @@ export default function AttachmentReport() {
       </div>
 
       {/* UPLOAD VIEW */}
-      {view === "upload" && (
+      {view === "upload" && profile?.isAdmin ? (
         <div className="p-4 border rounded-lg bg-white shadow">
           <h2 className="text-lg font-semibold mb-2">
             Upload and Preview Attachment Report
@@ -155,7 +179,7 @@ export default function AttachmentReport() {
             </>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* HISTORY VIEW */}
       {view === "history" && (

@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar.jsx";
 import Login from "./pages/Login.jsx";
 import AdminVerify from "./components/AdminVerify.jsx";
 import Register from "./pages/Register.jsx";
+import Settings from "./pages/Settings.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Employees from "./pages/Employees.jsx";
 import Assets from "./pages/Assets.jsx";
@@ -67,6 +68,14 @@ function AppContent() {
           <Route path="/asset/:id" element={<AssetView />} />
 
           {/* protected routes */}
+          <Route
+            path="/settings"
+            element={
+              <PrivateRoute>
+                <Settings />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/dashboard"
             element={
@@ -204,7 +213,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/datar"
+            path="/subline"
             element={
               <PrivateRoute>
                 <AttachmentReport />

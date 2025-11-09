@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { registerUser } from "../api/auth";
 import { useNavigate, Link } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
@@ -36,14 +36,12 @@ export default function Register() {
   if (!canRegister)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <Toaster position="top-center" />
         <p className="text-gray-700 text-lg">Checking admin verification...</p>
       </div>
     );
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Toaster position="top-center" />
       <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-sm">
         <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
           Register

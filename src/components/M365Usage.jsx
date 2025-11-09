@@ -125,24 +125,25 @@ export default function M365Dashboard() {
               </p>
             )}
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className={`px-6 py-3 rounded-xl text-white font-medium transition-all duration-200 flex items-center gap-2 ${
-              refreshing
-                ? "bg-gray-400 cursor-not-allowed"
-                : isSyncOld
-                ? "bg-red-600 hover:bg-red-700 hover:shadow-lg transform hover:-translate-y-0.5"
-                : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"
-            }`}
-          >
-            <span className={`${refreshing ? "animate-spin" : ""}`}>
-              <IoSyncOutline />
-            </span>
-            {refreshing ? "Syncing..." : "Sync Now"}
-          </button>
         </div>
       </div>
+
+      <button
+        onClick={handleRefresh}
+        disabled={refreshing}
+        className={`px-6 py-3 rounded-xl text-white font-medium transition-all duration-200 flex items-center gap-2 ${
+          refreshing
+            ? "bg-gray-400 cursor-not-allowed"
+            : isSyncOld
+            ? "bg-red-600 hover:bg-red-700 hover:shadow-lg transform hover:-translate-y-0.5"
+            : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5"
+        }`}
+      >
+        <span className={`${refreshing ? "animate-spin" : ""}`}>
+          <IoSyncOutline />
+        </span>
+        {refreshing ? "Syncing..." : "Sync Now"}
+      </button>
 
       {/* Key Metrics Cards */}
       <div className="grid md:grid-cols-3 gap-6">

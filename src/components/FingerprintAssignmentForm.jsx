@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { assignFingerprint, getFingerprintLogs } from "../api/attendanceApi";
 import { getEmployees } from "../api/employee";
+import { getProfile } from "../api/auth.js";
 
 const FingerprintAssignmentPage = () => {
   const [employees, setEmployees] = useState([]);
@@ -15,6 +16,20 @@ const FingerprintAssignmentPage = () => {
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   // Fetch employees
   useEffect(() => {
@@ -23,7 +38,7 @@ const FingerprintAssignmentPage = () => {
         const { data } = await getEmployees();
         setEmployees(data);
       } catch (error) {
-        console.error("Failed to load employees", error);
+        console.error(error);
         toast.error("Failed to load employees");
       }
     };
@@ -37,7 +52,7 @@ const FingerprintAssignmentPage = () => {
       const { data } = await getFingerprintLogs();
       setLogs(data);
     } catch (error) {
-      console.error("Failed to fetch logs", error);
+      console.error(error);
       toast.error("Unable to load logs");
     } finally {
       setLogsLoading(false);
@@ -92,8 +107,6 @@ const FingerprintAssignmentPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <Toaster position="top-right" />
-
       {/* --- FORM SECTION --- */}
       <motion.div
         className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 mb-10"
@@ -105,102 +118,104 @@ const FingerprintAssignmentPage = () => {
           Assign Employee to Fingerprint System
         </h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Employee Selection */}
-          <div className="flex flex-col">
-            <label className="font-medium text-gray-700 mb-1">
-              Select Employee
-            </label>
-            <select
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            >
-              <option value="">-- Select Employee --</option>
-              {employees.map((emp) => (
-                <option key={emp._id} value={emp._id}>
-                  {emp.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Email */}
-          <div className="flex flex-col">
-            <label className="font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={employeeEmail}
-              readOnly
-              className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-            />
-          </div>
-
-          {/* Employee ID */}
-          <div className="flex flex-col">
-            <label className="font-medium text-gray-700 mb-1">
-              Employee ID
-            </label>
-            <input
-              type="text"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600"
-            />
-          </div>
-
-          {/* Assigned By */}
-          <div className="flex flex-col">
-            <label className="font-medium text-gray-700 mb-1">
-              Assigned By
-            </label>
-            <input
-              type="text"
-              value={assignedBy}
-              onChange={(e) => setAssignedBy(e.target.value)}
-              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
-          </div>
-
-          {/* Send To */}
-          <div className="mt-2">
-            <label className="block font-medium text-gray-700 mb-2">
-              Send Email To:
-            </label>
-            <div className="flex gap-4">
-              {["employee", "hr", "both"].map((option) => (
-                <label
-                  key={option}
-                  className="flex items-center gap-2 text-gray-700"
-                >
-                  <input
-                    type="radio"
-                    value={option}
-                    checked={sendTo === option}
-                    onChange={(e) => setSendTo(e.target.value)}
-                  />
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </label>
-              ))}
+        {profile?.isAdmin && (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* Employee Selection */}
+            <div className="flex flex-col">
+              <label className="font-medium text-gray-700 mb-1">
+                Select Employee
+              </label>
+              <select
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              >
+                <option value="">-- Select Employee --</option>
+                {employees.map((emp) => (
+                  <option key={emp._id} value={emp._id}>
+                    {emp.name}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
 
-          {/* Submit Button */}
-          <motion.button
-            type="submit"
-            whileTap={{ scale: 0.95 }}
-            disabled={loading}
-            className={`mt-4 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {loading ? "Sending..." : "Send Email(s)"}
-          </motion.button>
-        </form>
+            {/* Email */}
+            <div className="flex flex-col">
+              <label className="font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={employeeEmail}
+                readOnly
+                className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Employee ID */}
+            <div className="flex flex-col">
+              <label className="font-medium text-gray-700 mb-1">
+                Employee ID
+              </label>
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="border rounded-lg px-4 py-2 bg-gray-100 text-gray-600"
+              />
+            </div>
+
+            {/* Assigned By */}
+            <div className="flex flex-col">
+              <label className="font-medium text-gray-700 mb-1">
+                Assigned By
+              </label>
+              <input
+                type="text"
+                value={assignedBy}
+                onChange={(e) => setAssignedBy(e.target.value)}
+                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              />
+            </div>
+
+            {/* Send To */}
+            <div className="mt-2">
+              <label className="block font-medium text-gray-700 mb-2">
+                Send Email To:
+              </label>
+              <div className="flex gap-4">
+                {["employee", "hr", "both"].map((option) => (
+                  <label
+                    key={option}
+                    className="flex items-center gap-2 text-gray-700"
+                  >
+                    <input
+                      type="radio"
+                      value={option}
+                      checked={sendTo === option}
+                      onChange={(e) => setSendTo(e.target.value)}
+                    />
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <motion.button
+              type="submit"
+              whileTap={{ scale: 0.95 }}
+              disabled={loading}
+              className={`mt-4 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              {loading ? "Sending..." : "Send Email(s)"}
+            </motion.button>
+          </form>
+        )}
       </motion.div>
 
       {/* --- LOG TABLE SECTION --- */}

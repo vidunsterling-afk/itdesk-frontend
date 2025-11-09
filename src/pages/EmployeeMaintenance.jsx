@@ -12,6 +12,9 @@ import { getAssets } from "../api/asset.js";
 import { Link } from "react-router-dom";
 import { FaCalendarAlt, FaTrash, FaCalendarCheck } from "react-icons/fa";
 import { TbReport } from "react-icons/tb";
+import { getProfile } from "../api/auth.js";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export default function EmployeeMaintenance() {
   const [reminders, setReminders] = useState([]);
@@ -25,13 +28,27 @@ export default function EmployeeMaintenance() {
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   const fetchReminders = async () => {
     try {
       const res = await getReminders();
       setReminders(res.data);
     } catch (err) {
-      console.error("Error fetching reminders:", err);
+      toast.error(`Error fetching reminders: ${err}`);
     }
   };
 
@@ -46,7 +63,7 @@ export default function EmployeeMaintenance() {
         setAssets(assetRes.data);
         await fetchReminders();
       } catch (err) {
-        console.error("Error fetching data:", err);
+        toast.error(`Error fetching data: ${err}`);
       } finally {
         setFetching(false);
       }
@@ -61,33 +78,60 @@ export default function EmployeeMaintenance() {
 
     try {
       await createReminder(form);
+      toast.success("Maintenance added successfully.");
       setForm({ employeeId: "", assetId: "", reminderDate: "", notes: "" });
       await fetchReminders();
     } catch (err) {
       console.error(err);
-      alert("Failed to create reminder");
+      toast.error("Failed to create reminder");
     } finally {
       setLoading(false);
     }
   };
 
   const handleReturn = async (id) => {
-    if (!window.confirm("Mark asset as returned?")) return;
-    try {
-      await markReturned(id);
-      await fetchReminders();
-    } catch {
-      alert("Failed to mark returned");
+    const result = await Swal.fire({
+      title: "Mark asset as returned?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, mark returned",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#10B981",
+      cancelButtonColor: "#6B7280",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await markReturned(id);
+        await fetchReminders();
+        toast.success("Asset marked as returned successfully.");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to mark returned");
+      }
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this reminder?")) return;
-    try {
-      await deleteReminder(id);
-      fetchReminders();
-    } catch {
-      alert("Failed to delete reminder");
+    const result = await Swal.fire({
+      title: "Delete this reminder?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteReminder(id);
+        await fetchReminders();
+        toast.success("Reminder deleted successfully.");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete reminder");
+      }
     }
   };
 
@@ -157,138 +201,142 @@ export default function EmployeeMaintenance() {
       </div>
 
       {/* Form Section */}
-      <motion.form
-        onSubmit={handleSubmit}
-        className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
-        whileHover={{ scale: 1.005 }}
-        transition={{ type: "spring", stiffness: 200 }}
-      >
-        {/* Employee Select */}
-        <div className="flex flex-col flex-1 min-w-[220px]">
-          <label className="font-semibold text-gray-700 mb-1">
-            Select Employee
-          </label>
-          <select
-            value={form.employeeId}
-            onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
-            required
-            disabled={loading}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="">-- Choose Employee --</option>
-
-            {/* Employees with no maintenance */}
-            <optgroup label="Available">
-              {employees
-                .filter((e) => !employeesWithMaintenance.includes(e._id))
-                .map((e) => (
-                  <option key={e._id} value={e._id}>
-                    {e.name}
-                  </option>
-                ))}
-            </optgroup>
-
-            {/* Employees with maintenance */}
-            <optgroup label="Has Maintenance" disabled>
-              {employees
-                .filter((e) => employeesWithMaintenance.includes(e._id))
-                .map((e) => (
-                  <option key={e._id} value={e._id}>
-                    {e.name} – Under Maintenance
-                  </option>
-                ))}
-            </optgroup>
-          </select>
-        </div>
-
-        {/* Asset Select */}
-        <div className="flex flex-col flex-1 min-w-[220px]">
-          <label className="font-semibold text-gray-700 mb-1">
-            Select Asset
-          </label>
-          <select
-            value={form.assetId}
-            onChange={(e) => setForm({ ...form, assetId: e.target.value })}
-            required
-            disabled={loading}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="">-- Choose Asset --</option>
-
-            <optgroup label="Available">
-              {assets
-                .filter(
-                  (a) =>
-                    (a.category === "Laptop" || a.category === "PC") &&
-                    !assetsWithMaintenance.includes(a._id)
-                )
-                .map((a) => (
-                  <option key={a._id} value={a._id}>
-                    {a.assetTag} ({a.name}){" "}
-                    {a.assignedTo?.name
-                      ? `– Assigned to ${a.assignedTo.name}`
-                      : ""}
-                  </option>
-                ))}
-            </optgroup>
-
-            <optgroup label="Under Maintenance" disabled>
-              {assets
-                .filter(
-                  (a) =>
-                    (a.category === "Laptop" || a.category === "PC") &&
-                    assetsWithMaintenance.includes(a._id)
-                )
-                .map((a) => (
-                  <option key={a._id} value={a._id}>
-                    {a.assetTag} ({a.name}) – Under Maintenance
-                  </option>
-                ))}
-            </optgroup>
-          </select>
-        </div>
-
-        {/* Date */}
-        <div className="flex flex-col flex-1 min-w-[180px]">
-          <label className="font-semibold text-gray-700 mb-1">
-            Reminder Date
-          </label>
-          <input
-            type="date"
-            value={form.reminderDate}
-            onChange={(e) => setForm({ ...form, reminderDate: e.target.value })}
-            required
-            disabled={loading}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </div>
-
-        {/* Notes */}
-        <div className="flex flex-col flex-1 min-w-[200px]">
-          <label className="font-semibold text-gray-700 mb-1">Notes</label>
-          <input
-            placeholder="Enter notes..."
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            disabled={loading}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </div>
-
-        {/* Submit */}
-        <motion.button
-          type="submit"
-          whileTap={{ scale: 0.95 }}
-          disabled={loading}
-          className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
+      {profile?.isAdmin && (
+        <motion.form
+          onSubmit={handleSubmit}
+          className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
+          whileHover={{ scale: 1.005 }}
+          transition={{ type: "spring", stiffness: 200 }}
         >
-          {loading ? "Saving..." : "Create Reminder"}
-        </motion.button>
-      </motion.form>
+          {/* Employee Select */}
+          <div className="flex flex-col flex-1 min-w-[220px]">
+            <label className="font-semibold text-gray-700 mb-1">
+              Select Employee
+            </label>
+            <select
+              value={form.employeeId}
+              onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
+              required
+              disabled={loading}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">-- Choose Employee --</option>
+
+              {/* Employees with no maintenance */}
+              <optgroup label="Available">
+                {employees
+                  .filter((e) => !employeesWithMaintenance.includes(e._id))
+                  .map((e) => (
+                    <option key={e._id} value={e._id}>
+                      {e.name}
+                    </option>
+                  ))}
+              </optgroup>
+
+              {/* Employees with maintenance */}
+              <optgroup label="Has Maintenance" disabled>
+                {employees
+                  .filter((e) => employeesWithMaintenance.includes(e._id))
+                  .map((e) => (
+                    <option key={e._id} value={e._id}>
+                      {e.name} – Under Maintenance
+                    </option>
+                  ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* Asset Select */}
+          <div className="flex flex-col flex-1 min-w-[220px]">
+            <label className="font-semibold text-gray-700 mb-1">
+              Select Asset
+            </label>
+            <select
+              value={form.assetId}
+              onChange={(e) => setForm({ ...form, assetId: e.target.value })}
+              required
+              disabled={loading}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              <option value="">-- Choose Asset --</option>
+
+              <optgroup label="Available">
+                {assets
+                  .filter(
+                    (a) =>
+                      (a.category === "Laptop" || a.category === "PC") &&
+                      !assetsWithMaintenance.includes(a._id)
+                  )
+                  .map((a) => (
+                    <option key={a._id} value={a._id}>
+                      {a.assetTag} ({a.name}){" "}
+                      {a.assignedTo?.name
+                        ? `– Assigned to ${a.assignedTo.name}`
+                        : ""}
+                    </option>
+                  ))}
+              </optgroup>
+
+              <optgroup label="Under Maintenance" disabled>
+                {assets
+                  .filter(
+                    (a) =>
+                      (a.category === "Laptop" || a.category === "PC") &&
+                      assetsWithMaintenance.includes(a._id)
+                  )
+                  .map((a) => (
+                    <option key={a._id} value={a._id}>
+                      {a.assetTag} ({a.name}) – Under Maintenance
+                    </option>
+                  ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* Date */}
+          <div className="flex flex-col flex-1 min-w-[180px]">
+            <label className="font-semibold text-gray-700 mb-1">
+              Reminder Date
+            </label>
+            <input
+              type="date"
+              value={form.reminderDate}
+              onChange={(e) =>
+                setForm({ ...form, reminderDate: e.target.value })
+              }
+              required
+              disabled={loading}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="flex flex-col flex-1 min-w-[200px]">
+            <label className="font-semibold text-gray-700 mb-1">Notes</label>
+            <input
+              placeholder="Enter notes..."
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              disabled={loading}
+              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          </div>
+
+          {/* Submit */}
+          <motion.button
+            type="submit"
+            whileTap={{ scale: 0.95 }}
+            disabled={loading}
+            className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {loading ? "Saving..." : "Create Reminder"}
+          </motion.button>
+        </motion.form>
+      )}
 
       {/* Table Section */}
       <div className="overflow-x-auto">
@@ -299,7 +347,9 @@ export default function EmployeeMaintenance() {
               <th className="py-3 px-4 text-left">Asset</th>
               <th className="py-3 px-4 text-left">Reminder Date</th>
               <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-center">Actions</th>
+              {profile?.isAdmin && (
+                <th className="py-3 px-4 text-center">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -327,22 +377,24 @@ export default function EmployeeMaintenance() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 flex text-center space-x-2">
-                    {!r.returned && (
+                  {profile?.isAdmin && (
+                    <td className="py-3 px-4 flex text-center space-x-2">
+                      {!r.returned && (
+                        <button
+                          onClick={() => handleReturn(r._id)}
+                          className="px-3 py-1 flex items-center gap-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                        >
+                          <FaCalendarCheck /> Returned
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleReturn(r._id)}
-                        className="px-3 py-1 flex items-center gap-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                        onClick={() => handleDelete(r._id)}
+                        className="px-3 py-1 flex items-center gap-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
                       >
-                        <FaCalendarCheck /> Returned
+                        <FaTrash /> Delete
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(r._id)}
-                      className="px-3 py-1 flex items-center gap-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                    >
-                      <FaTrash /> Delete
-                    </button>
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))
             ) : (

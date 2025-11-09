@@ -3,19 +3,36 @@ import { fetchRepairs, deleteRepair } from "../api/repair.js";
 import RepairList from "../components/RepairList.jsx";
 import RepairForm from "../components/RepairForm.jsx";
 import ReturnRepairModal from "../components/ReturnRepairModal.jsx";
+import { getProfile } from "../api/auth.js";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export default function Repair() {
   const [allRepairs, setAllRepairs] = useState([]);
   const [repairs, setRepairs] = useState([]);
   const [tab, setTab] = useState("all");
   const [selectedRepair, setSelectedRepair] = useState(null);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   const loadRepairs = async () => {
     try {
       const res = await fetchRepairs();
       setAllRepairs(res.data);
     } catch (err) {
-      console.error(err);
+      toast.error(err);
     }
   };
 
@@ -31,13 +48,24 @@ export default function Repair() {
   const handleReturn = (repair) => setSelectedRepair(repair);
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure?")) {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This action cannot be undone!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (result.isConfirmed) {
       try {
         await deleteRepair(id);
         setAllRepairs(allRepairs.filter((r) => r._id !== id));
+        toast.success("Repair deleted successfully.");
       } catch (err) {
-        console.error(err);
-        alert("Failed to delete repair");
+        toast.error(`Failed to delete repair: ${err}.`);
       }
     }
   };
@@ -46,7 +74,7 @@ export default function Repair() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Repair Management</h1>
 
-      <RepairForm onCreated={loadRepairs} />
+      {profile?.isAdmin && <RepairForm onCreated={loadRepairs} />}
 
       <div className="flex gap-4 border-b">
         {["all", "dispatched", "returned"].map((t) => (

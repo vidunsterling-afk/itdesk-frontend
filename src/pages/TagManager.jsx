@@ -5,6 +5,8 @@ import { getAssets } from "../api/asset";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
+import { getProfile } from "../api/auth";
 import { FaTrash, FaPlusCircle, FaTags, FaPrint } from "react-icons/fa";
 
 export default function TagManager() {
@@ -20,6 +22,20 @@ export default function TagManager() {
   });
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   // Load data
   const loadData = async () => {
@@ -97,7 +113,18 @@ export default function TagManager() {
 
   // Delete tag
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this tag?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure you want to delete this tag?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       setTags((prev) => prev.filter((t) => t._id !== id));
       await deleteTag(id);
@@ -242,72 +269,74 @@ export default function TagManager() {
         </div>
 
         {/* Tag Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
-        >
-          <input
-            type="text"
-            placeholder="New Tag Asset Code"
-            value={form.assetCode}
-            onChange={(e) => setForm({ ...form, assetCode: e.target.value })}
-            required
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-          />
-
-          <select
-            value={form.selectedAsset}
-            onChange={(e) =>
-              setForm({ ...form, selectedAsset: e.target.value })
-            }
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+        {profile?.isAdmin && (
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
           >
-            <option value="">Select Existing Asset</option>
-            {assets.map((a) => (
-              <option key={a._id} value={a.assetTag}>
-                {a.assetTag} — {a.name}
-              </option>
-            ))}
-          </select>
+            <input
+              type="text"
+              placeholder="New Tag Asset Code"
+              value={form.assetCode}
+              onChange={(e) => setForm({ ...form, assetCode: e.target.value })}
+              required
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            />
 
-          <select
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select User</option>
-            {employees.map((e) => (
-              <option key={e._id} value={e.name}>
-                {e.name}
-              </option>
-            ))}
-          </select>
+            <select
+              value={form.selectedAsset}
+              onChange={(e) =>
+                setForm({ ...form, selectedAsset: e.target.value })
+              }
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Existing Asset</option>
+              {assets.map((a) => (
+                <option key={a._id} value={a.assetTag}>
+                  {a.assetTag} — {a.name}
+                </option>
+              ))}
+            </select>
 
-          <input
-            type="text"
-            placeholder="Serial Number"
-            value={form.serialNumber}
-            readOnly
-            className="border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
-          />
+            <select
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select User</option>
+              {employees.map((e) => (
+                <option key={e._id} value={e.name}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
 
-          <input
-            type="date"
-            value={form.purchaseDate}
-            readOnly
-            className="border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
-          />
+            <input
+              type="text"
+              placeholder="Serial Number"
+              value={form.serialNumber}
+              readOnly
+              className="border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+            />
 
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            type="submit"
-            disabled={loading}
-            className="col-span-full flex justify-center items-center gap-2 bg-blue-600 text-white py-2 rounded-lg shadow-md hover:bg-blue-700 transition-all"
-          >
-            <FaPlusCircle /> {loading ? "Adding..." : "Add Tag"}
-          </motion.button>
-        </form>
+            <input
+              type="date"
+              value={form.purchaseDate}
+              readOnly
+              className="border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+            />
+
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              type="submit"
+              disabled={loading}
+              className="col-span-full flex justify-center items-center gap-2 bg-blue-600 text-white py-2 rounded-lg shadow-md hover:bg-blue-700 transition-all"
+            >
+              <FaPlusCircle /> {loading ? "Adding..." : "Add Tag"}
+            </motion.button>
+          </form>
+        )}
 
         {/* Tag Table */}
         {tableLoading ? (

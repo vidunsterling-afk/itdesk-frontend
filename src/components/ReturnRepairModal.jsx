@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { markReturned } from "../api/repair.js";
 import { Html5QrcodeScanner, Html5QrcodeScanType } from "html5-qrcode";
+import toast from "react-hot-toast";
 
 export default function ReturnRepairModal({
   repair,
@@ -29,57 +30,41 @@ export default function ReturnRepairModal({
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Error marking returned");
+      toast.error("Error marking returned");
     }
   };
 
   const handleScanSuccess = async (decodedText) => {
-    console.log("🟢 QR Decoded Text:", decodedText);
-    console.log("🔍 Available Repairs:", repairs);
-
     stopScanning();
 
     if (!repairs || repairs.length === 0) {
-      console.warn("⚠️ No repairs loaded — cannot match QR");
-      alert("No repair data available. Please refresh.");
+      toast.error("⚠️ No repairs loaded — cannot match QR");
+      toast.error("No repair data available. Please refresh.");
       return;
     }
 
-    // Extract the ID (assuming it’s the last part of the URL)
     const idMatch = decodedText.match(/[0-9a-fA-F]{24}$/);
     const qrId = idMatch ? idMatch[0] : decodedText.trim();
-    console.log("🧩 Extracted QR ID:", qrId);
-
-    // Try to find a matching repair
     const matched = repairs.find((r) => r._id === qrId);
-    console.log("🔎 Matched Repair:", matched ? matched._id : "❌ None");
 
     if (matched) {
       try {
-        console.log("📤 Sending markReturned request for:", matched._id);
         const formData = new FormData();
         formData.append("notes", "Scanned QR return");
-
         await markReturned(matched._id, formData);
-
-        console.log("✅ Successfully marked as returned");
         onReturned();
         onClose();
-        alert(`✅ ${matched.asset?.name} marked as returned`);
+        toast.success(`${matched.asset?.name} marked as returned`);
       } catch (err) {
-        console.error("❌ Backend error while marking returned:", err);
-        alert("Error updating repair via scan");
+        toast.error(`Error updating repair via scan: ${err}`);
       }
     } else {
-      console.warn("⚠️ QR not recognized or does not match any repair");
-      alert("❌ QR not recognized or already returned");
+      toast.error("QR not recognized or already returned");
     }
   };
 
   const handleScanError = (err) => {
-    // Only show real camera errors, ignore NotFoundException spam
     if (err && !err.includes("NotFoundException")) {
-      console.warn("QR Scan Error:", err);
       setErrorMsg("Error accessing camera or scanning QR.");
     }
   };

@@ -16,9 +16,11 @@ import {
   FaCheck,
   FaTimesCircle,
 } from "react-icons/fa";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { IoAddCircle } from "react-icons/io5";
 import { GrDocumentDownload } from "react-icons/gr";
+import { getProfile } from "../api/auth.js";
+import Swal from "sweetalert2";
 
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -26,6 +28,20 @@ export default function Employees() {
   const [form, setForm] = useState({ name: "", email: "", department: "" });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -102,7 +118,16 @@ export default function Employees() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this employee?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will permanently delete the employee.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteEmployee(id);
       toast.success("Employee deleted successfully");
@@ -114,8 +139,16 @@ export default function Employees() {
   };
 
   const handleUnassign = async (employeeId, assetIds, type) => {
-    if (!window.confirm("Are you sure you want to unassign this asset?"))
-      return;
+    const result = await Swal.fire({
+      title: "Confirm Unassign",
+      text: "Are you sure you want to unassign this asset?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, unassign it!",
+    });
+    if (!result.isConfirmed) return;
     try {
       await unassignAssets(employeeId, assetIds, type);
       toast.success("Asset unassigned successfully");
@@ -128,8 +161,6 @@ export default function Employees() {
 
   return (
     <div className="p-6">
-      <Toaster position="top-right" reverseOrder={false} />
-
       <motion.h2
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -140,39 +171,41 @@ export default function Employees() {
       </motion.h2>
 
       {/* Add Employee Form */}
-      <motion.form
-        onSubmit={handleAdd}
-        className="flex flex-col sm:flex-row gap-3 mb-6"
-      >
-        <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          required
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
-        />
-        <input
-          placeholder="Email"
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          required
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
-        />
-        <input
-          placeholder="Department"
-          value={form.department}
-          onChange={(e) => setForm({ ...form, department: e.target.value })}
-          required
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
-        />
-        <button
-          type="submit"
-          className="px-6 py-2 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
+      {profile?.isAdmin && (
+        <motion.form
+          onSubmit={handleAdd}
+          className="flex flex-col sm:flex-row gap-3 mb-6"
         >
-          <IoAddCircle size={30} /> Add Employee
-        </button>
-      </motion.form>
+          <input
+            placeholder="Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+          />
+          <input
+            placeholder="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+          />
+          <input
+            placeholder="Department"
+            value={form.department}
+            onChange={(e) => setForm({ ...form, department: e.target.value })}
+            required
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex-1"
+          />
+          <button
+            type="submit"
+            className="px-6 py-2 flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all"
+          >
+            <IoAddCircle size={30} /> Add Employee
+          </button>
+        </motion.form>
+      )}
       <button
         onClick={handleExport}
         className="px-4 py-2 mb-4 flex items-center gap-1 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -222,7 +255,9 @@ export default function Employees() {
                 <th className="p-3 text-left whitespace-nowrap">
                   Temporary Assets
                 </th>
-                <th className="p-3 text-left whitespace-nowrap">Actions</th>
+                {profile?.isAdmin && (
+                  <th className="p-3 text-left whitespace-nowrap">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -291,14 +326,16 @@ export default function Employees() {
                               <span className="text-sm whitespace-nowrap">
                                 {a.assetTag} ({a.name})
                               </span>
-                              <button
-                                onClick={() =>
-                                  handleUnassign(emp._id, [a._id], "assigned")
-                                }
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <FaTimes />
-                              </button>
+                              {profile?.isAdmin && (
+                                <button
+                                  onClick={() =>
+                                    handleUnassign(emp._id, [a._id], "assigned")
+                                  }
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <FaTimes />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -319,18 +356,20 @@ export default function Employees() {
                               <span className="text-sm whitespace-nowrap">
                                 {a.assetTag} ({a.name})
                               </span>
-                              <button
-                                onClick={() =>
-                                  handleUnassign(
-                                    emp._id,
-                                    [a._id],
-                                    "tempAssigned"
-                                  )
-                                }
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <FaTimes />
-                              </button>
+                              {profile?.isAdmin && (
+                                <button
+                                  onClick={() =>
+                                    handleUnassign(
+                                      emp._id,
+                                      [a._id],
+                                      "tempAssigned"
+                                    )
+                                  }
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <FaTimes />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -340,39 +379,41 @@ export default function Employees() {
                     </td>
 
                     {/* Actions */}
-                    <td className="p-3 whitespace-nowrap flex gap-2">
-                      {editingId === emp._id ? (
-                        <>
-                          <button
-                            onClick={() => handleSubmit(emp._id)}
-                            className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md"
-                          >
-                            <FaCheck /> Save
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="flex items-center gap-1 px-3 py-1 bg-gray-400 hover:bg-gray-500 text-white rounded-md"
-                          >
-                            <FaTimesCircle /> Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleEdit(emp)}
-                            className="flex items-center gap-1 px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md"
-                          >
-                            <FaEdit /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(emp._id)}
-                            className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md"
-                          >
-                            <FaTrash /> Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
+                    {profile?.isAdmin && (
+                      <td className="p-3 whitespace-nowrap flex gap-2">
+                        {editingId === emp._id ? (
+                          <>
+                            <button
+                              onClick={() => handleSubmit(emp._id)}
+                              className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md"
+                            >
+                              <FaCheck /> Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="flex items-center gap-1 px-3 py-1 bg-gray-400 hover:bg-gray-500 text-white rounded-md"
+                            >
+                              <FaTimesCircle /> Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEdit(emp)}
+                              className="flex items-center gap-1 px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md"
+                            >
+                              <FaEdit /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(emp._id)}
+                              className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md"
+                            >
+                              <FaTrash /> Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
             </tbody>

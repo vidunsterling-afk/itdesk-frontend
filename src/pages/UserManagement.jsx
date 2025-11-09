@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { FaExclamationTriangle } from "react-icons/fa";
 import { getUsers, updateUser, deleteUser, registerUser } from "../api/auth";
+import Swal from "sweetalert2";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -65,7 +67,16 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This action will permanently delete the user.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteUser(id);
       setUsers(users.filter((u) => u._id !== id));
@@ -99,15 +110,16 @@ export default function UserManagement() {
 
   if (error)
     return (
-      <div className="max-w-md mx-auto mt-10 p-4 bg-red-100 text-red-700 rounded-lg shadow text-center">
-        {error}
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center bg-red-100 text-red-700 rounded-full w-40 h-40 shadow-lg p-4">
+          <FaExclamationTriangle className="text-4xl mb-2 animate-pulse" />
+          <span className="text-center font-semibold">{error}</span>
+        </div>
       </div>
     );
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <Toaster position="top-right" />
-
       <h2 className="text-3xl font-semibold mb-6 text-gray-800">
         User Management
       </h2>

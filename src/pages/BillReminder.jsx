@@ -8,6 +8,9 @@ import {
 } from "../api/bill";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import { getProfile } from "../api/auth";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export default function BillManager() {
   const [bills, setBills] = useState([]);
@@ -21,6 +24,20 @@ export default function BillManager() {
   });
   const [loading, setLoading] = useState(false);
   const baseURL = import.meta.env.VITE_BACKEND_URI;
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   // Fetch bills
   const fetchBills = async () => {
@@ -29,6 +46,7 @@ export default function BillManager() {
       setBills(res.data);
     } catch (err) {
       console.error(err);
+      toast.error(err);
     }
   };
 
@@ -39,6 +57,7 @@ export default function BillManager() {
       setReports(res.data);
     } catch (err) {
       console.error(err);
+      toast.error(err);
     }
   };
 
@@ -59,6 +78,7 @@ export default function BillManager() {
     setLoading(true);
     try {
       await createBill(form);
+      toast.success("Bill created successfully.");
       setForm({
         name: "",
         reminderDate: "",
@@ -66,10 +86,10 @@ export default function BillManager() {
         recurring: false,
       });
       fetchBills();
-      setActiveTab("bills"); // switch back to bills after creation
+      setActiveTab("bills");
     } catch (err) {
       console.error(err);
-      alert("Failed to create bill");
+      toast.error("Failed to create bill");
     } finally {
       setLoading(false);
     }
@@ -78,23 +98,36 @@ export default function BillManager() {
   const handlePay = async (id) => {
     try {
       await payBill(id);
+      toast.success("Bill paid successfully.");
       fetchBills();
       fetchReports();
     } catch (err) {
       console.error(err);
-      alert("Failed to pay bill");
+      toast.error("Failed to pay bill");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this bill?")) return;
-    try {
-      await deleteBill(id);
-      fetchBills();
-      fetchReports();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete bill");
+    const result = await Swal.fire({
+      title: "Delete this bill?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#EF4444",
+      cancelButtonColor: "#6B7280",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteBill(id);
+        await fetchBills();
+        await fetchReports();
+        toast.success("Bill deleted successfully");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete bill");
+      }
     }
   };
 
@@ -133,78 +166,82 @@ export default function BillManager() {
       {activeTab === "bills" && (
         <>
           {/* Form */}
-          <motion.form
-            onSubmit={handleSubmit}
-            className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
-            whileHover={{ scale: 1.005 }}
-          >
-            <div className="flex flex-col flex-1 min-w-[180px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Bill Name
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[180px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Reminder Date
-              </label>
-              <input
-                type="date"
-                value={form.reminderDate}
-                onChange={(e) =>
-                  setForm({ ...form, reminderDate: e.target.value })
-                }
-                required
-                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[140px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Priority
-              </label>
-              <select
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.recurring}
-                onChange={(e) =>
-                  setForm({ ...form, recurring: e.target.checked })
-                }
-              />
-              <span className="text-gray-700">Recurring</span>
-            </div>
-
-            <motion.button
-              type="submit"
-              whileTap={{ scale: 0.95 }}
-              disabled={loading}
-              className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+          {profile?.isAdmin && (
+            <motion.form
+              onSubmit={handleSubmit}
+              className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
+              whileHover={{ scale: 1.005 }}
             >
-              {loading ? "Saving..." : "Create Bill"}
-            </motion.button>
-          </motion.form>
+              <div className="flex flex-col flex-1 min-w-[180px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Bill Name
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[180px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Reminder Date
+                </label>
+                <input
+                  type="date"
+                  value={form.reminderDate}
+                  onChange={(e) =>
+                    setForm({ ...form, reminderDate: e.target.value })
+                  }
+                  required
+                  className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[140px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Priority
+                </label>
+                <select
+                  value={form.priority}
+                  onChange={(e) =>
+                    setForm({ ...form, priority: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.recurring}
+                  onChange={(e) =>
+                    setForm({ ...form, recurring: e.target.checked })
+                  }
+                />
+                <span className="text-gray-700">Recurring</span>
+              </div>
+
+              <motion.button
+                type="submit"
+                whileTap={{ scale: 0.95 }}
+                disabled={loading}
+                className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {loading ? "Saving..." : "Create Bill"}
+              </motion.button>
+            </motion.form>
+          )}
 
           {/* Bills Table */}
           <div className="overflow-x-auto">
@@ -215,7 +252,9 @@ export default function BillManager() {
                   <th className="py-3 px-4 text-left">Date</th>
                   <th className="py-3 px-4 text-left">Priority</th>
                   <th className="py-3 px-4 text-left">Status</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  {profile?.isAdmin && (
+                    <th className="py-3 px-4 text-center">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -241,22 +280,24 @@ export default function BillManager() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 flex justify-center gap-2">
-                        {b.status !== "Paid" && (
+                      {profile?.isAdmin && (
+                        <td className="py-3 px-4 flex justify-center gap-2">
+                          {b.status !== "Paid" && (
+                            <button
+                              onClick={() => handlePay(b._id)}
+                              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                            >
+                              Pay
+                            </button>
+                          )}
                           <button
-                            onClick={() => handlePay(b._id)}
-                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                            onClick={() => handleDelete(b._id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
                           >
-                            Pay
+                            Delete
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(b._id)}
-                          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                        >
-                          Delete
-                        </button>
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   ))
                 ) : (

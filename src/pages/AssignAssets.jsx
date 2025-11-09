@@ -5,6 +5,8 @@ import { getEmployees } from "../api/employee.js";
 import { getAssets } from "../api/asset.js";
 import { assignAssets } from "../api/assignment.js";
 import { MdOutlineAssignmentInd } from "react-icons/md";
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 
 export default function AssignAssets() {
   const [employees, setEmployees] = useState([]);
@@ -47,7 +49,7 @@ export default function AssignAssets() {
       setAssignedMap(map);
     } catch (err) {
       console.error(err);
-      alert("Failed to load data");
+      toast.error("Failed to load data.");
     } finally {
       setLoading(false);
     }
@@ -60,20 +62,20 @@ export default function AssignAssets() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedEmployee || selectedAssets.length === 0) {
-      alert("Please select an employee and at least one asset.");
+      toast.error("Please select an employee and at least one asset.");
       return;
     }
 
     try {
       setSubmitting(true);
       await assignAssets(selectedEmployee, selectedAssets, type, sendEmailFlag);
-      alert("✅ Assets assigned successfully!");
+      toast.success("Assets assigned successfully!");
       setSelectedAssets([]);
       setSelectedEmployee("");
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert("❌ Assignment failed");
+      toast.error("Assignment failed");
     } finally {
       setSubmitting(false);
     }

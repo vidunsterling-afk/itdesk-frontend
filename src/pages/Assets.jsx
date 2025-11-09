@@ -10,11 +10,13 @@ import {
 import { motion } from "framer-motion";
 import { FaTrash, FaEdit, FaCheck, FaTimesCircle } from "react-icons/fa";
 import { GrDocumentDownload } from "react-icons/gr";
-import toast, { Toaster } from "react-hot-toast";
 import { IoAddCircle, IoPrint } from "react-icons/io5";
 import { MdEdit } from "react-icons/md";
 import { BsQrCode } from "react-icons/bs";
 import QRCode from "qrcode";
+import toast from "react-hot-toast";
+import { getProfile } from "../api/auth.js";
+import Swal from "sweetalert2";
 
 export default function Assets() {
   const [assets, setAssets] = useState([]);
@@ -35,6 +37,20 @@ export default function Assets() {
   const [loading, setLoading] = useState(true);
   const [qrAsset, setQrAsset] = useState(null);
   const [qrImage, setQrImage] = useState("");
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   useEffect(() => {
     if (qrAsset) {
@@ -157,7 +173,16 @@ export default function Assets() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this asset?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "This will permanently delete the asset.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteAsset(id);
       toast.success("Asset deleted successfully");
@@ -323,8 +348,6 @@ export default function Assets() {
   return (
     <>
       <div className="p-6">
-        <Toaster position="top-right" reverseOrder={false} />
-
         <div className="flex justify-between items-center">
           <motion.h2
             initial={{ opacity: 0, y: -20 }}
@@ -334,79 +357,84 @@ export default function Assets() {
           >
             Assets
           </motion.h2>
-          <div>
-            <motion.button
-              onClick={handleDownload}
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.5,
-              }}
-              className="px-4 py-2 mb-4 flex items-center gap-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              <GrDocumentDownload /> Export
-            </motion.button>
-          </div>
         </div>
 
         {/* Add Asset Form */}
-        <motion.form
-          onSubmit={handleAdd}
-          className="bg-white shadow-lg rounded-xl p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {[
-            "assetTag",
-            "name",
-            "category",
-            "brand",
-            "model",
-            "serialNumber",
-            "purchaseDate",
-            "warrantyExpiry",
-            "location",
-            "remarks",
-          ].map((field) => (
-            <div key={field} className="flex flex-col">
-              <label className="mb-1 text-gray-700 font-semibold text-sm">
-                {field
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (str) => str.toUpperCase())}
-              </label>
-              <input
-                type={
-                  ["purchaseDate", "warrantyExpiry"].includes(field)
-                    ? "date"
-                    : "text"
-                }
-                placeholder={field}
-                value={form[field] || ""}
-                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                required={requiredFields.includes(field)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-colors"
-              />
-            </div>
-          ))}
+        {profile?.isAdmin && (
+          <motion.form
+            onSubmit={handleAdd}
+            className="bg-white shadow-lg rounded-xl p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {[
+              "assetTag",
+              "name",
+              "category",
+              "brand",
+              "model",
+              "serialNumber",
+              "purchaseDate",
+              "warrantyExpiry",
+              "location",
+              "remarks",
+            ].map((field) => (
+              <div key={field} className="flex flex-col">
+                <label className="mb-1 text-gray-700 font-semibold text-sm">
+                  {field
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase())}
+                </label>
+                <input
+                  type={
+                    ["purchaseDate", "warrantyExpiry"].includes(field)
+                      ? "date"
+                      : "text"
+                  }
+                  placeholder={field}
+                  value={form[field] || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, [field]: e.target.value })
+                  }
+                  required={requiredFields.includes(field)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-colors"
+                />
+              </div>
+            ))}
 
-          {/* Submit Button */}
-          <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-2">
-            <button
-              type="submit"
-              disabled={!!editingId}
-              className="px-6 py-2 flex items-center gap-1 text-white font-semibold rounded-lg shadow-md transition-all 
+            {/* Submit Button */}
+            <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-2">
+              <button
+                type="submit"
+                disabled={!!editingId}
+                className="px-6 py-2 flex items-center gap-1 text-white font-semibold rounded-lg shadow-md transition-all 
              bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400"
-            >
-              {editingId ? (
-                <>
-                  <MdEdit size={30} /> Update Asset
-                </>
-              ) : (
-                <>
-                  <IoAddCircle size={30} /> Add Asset
-                </>
-              )}
-            </button>
-          </div>
-        </motion.form>
+              >
+                {editingId ? (
+                  <>
+                    <MdEdit size={30} /> Update Asset
+                  </>
+                ) : (
+                  <>
+                    <IoAddCircle size={30} /> Add Asset
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.form>
+        )}
+
+        <div>
+          <motion.button
+            onClick={handleDownload}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.5,
+            }}
+            className="px-4 py-2 mb-4 flex items-center gap-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            <GrDocumentDownload /> Export
+          </motion.button>
+        </div>
 
         <input
           type="text"
@@ -452,7 +480,9 @@ export default function Assets() {
                   <th className="p-3 text-left whitespace-nowrap">
                     Assigned To
                   </th>
-                  <th className="p-3 text-left whitespace-nowrap">Actions</th>
+                  {profile?.isAdmin && (
+                    <th className="p-3 text-left whitespace-nowrap">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -549,45 +579,47 @@ export default function Assets() {
                         {a.assignedTo?.name || "-"}
                       </td>
 
-                      <td className="p-3 whitespace-nowrap flex gap-2">
-                        {editingId === a._id ? (
-                          <>
-                            <button
-                              onClick={() => handleSubmit(a._id)}
-                              className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md"
-                            >
-                              <FaCheck /> Save
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              className="flex items-center gap-1 px-3 py-1 bg-gray-400 hover:bg-gray-500 text-white rounded-md"
-                            >
-                              <FaTimesCircle /> Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => handleEdit(a)}
-                              className="flex items-center gap-1 px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md"
-                            >
-                              <FaEdit /> Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(a._id)}
-                              className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md"
-                            >
-                              <FaTrash /> Delete
-                            </button>
-                            <button
-                              onClick={() => handlePrint(a)}
-                              className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
-                            >
-                              <IoPrint /> Print
-                            </button>
-                          </>
-                        )}
-                      </td>
+                      {profile?.isAdmin && (
+                        <td className="p-3 whitespace-nowrap flex gap-2">
+                          {editingId === a._id ? (
+                            <>
+                              <button
+                                onClick={() => handleSubmit(a._id)}
+                                className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md"
+                              >
+                                <FaCheck /> Save
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                className="flex items-center gap-1 px-3 py-1 bg-gray-400 hover:bg-gray-500 text-white rounded-md"
+                              >
+                                <FaTimesCircle /> Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleEdit(a)}
+                                className="flex items-center gap-1 px-3 py-1 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md"
+                              >
+                                <FaEdit /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(a._id)}
+                                className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md"
+                              >
+                                <FaTrash /> Delete
+                              </button>
+                              <button
+                                onClick={() => handlePrint(a)}
+                                className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md"
+                              >
+                                <IoPrint /> Print
+                              </button>
+                            </>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
               </tbody>

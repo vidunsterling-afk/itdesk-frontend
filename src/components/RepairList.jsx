@@ -1,7 +1,22 @@
-// src/components/RepairList.jsx
-import React from "react";
+import { useState, useEffect } from "react";
+import { getProfile } from "../api/auth";
+import toast from "react-hot-toast";
 
 export default function RepairList({ repairs, onReturn, onDelete }) {
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
   const handlePrintQr = (qrUrl) => {
     if (!qrUrl) return;
 
@@ -67,7 +82,7 @@ export default function RepairList({ repairs, onReturn, onDelete }) {
               "Status",
               "Dispatch Date",
               "Return Date",
-              "Actions",
+              ...(profile?.isAdmin ? ["Actions"] : []),
             ].map((heading) => (
               <th
                 key={heading}
@@ -116,22 +131,24 @@ export default function RepairList({ repairs, onReturn, onDelete }) {
                   ? new Date(r.returnDate).toLocaleDateString()
                   : "-"}
               </td>
-              <td className="px-4 py-3 flex gap-2">
-                {r.status === "dispatched" && (
+              {profile?.isAdmin && (
+                <td className="px-4 py-3 flex gap-2">
+                  {r.status === "dispatched" && (
+                    <button
+                      onClick={() => onReturn(r)}
+                      className="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition-colors duration-150"
+                    >
+                      Return
+                    </button>
+                  )}
                   <button
-                    onClick={() => onReturn(r)}
-                    className="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition-colors duration-150"
+                    onClick={() => onDelete(r._id)}
+                    className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors duration-150"
                   >
-                    Return
+                    Delete
                   </button>
-                )}
-                <button
-                  onClick={() => onDelete(r._id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors duration-150"
-                >
-                  Delete
-                </button>
-              </td>
+                </td>
+              )}
             </tr>
           ))}
           {repairs.length === 0 && (

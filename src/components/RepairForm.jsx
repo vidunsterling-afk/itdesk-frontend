@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createRepair } from "../api/repair.js";
 import { getAssets } from "../api/asset.js";
+import toast from "react-hot-toast";
 
 export default function RepairForm({ onCreated }) {
   const [assets, setAssets] = useState([]);
@@ -26,11 +27,11 @@ export default function RepairForm({ onCreated }) {
     try {
       const res = await createRepair(form);
       setForm({ assetId: "", vendor: "", reason: "", notes: "" });
-      setQrUrl(res.data.repair.qrCode); // set QR URL
+      setQrUrl(res.data.repair.qrCode);
       onCreated();
     } catch (err) {
       console.error(err);
-      alert("Error creating repair");
+      toast.error("Error creating repair");
     }
   };
 

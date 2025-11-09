@@ -19,6 +19,9 @@ import {
 } from "recharts";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import { getProfile } from "../api/auth";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 export default function MonthData() {
   const [months, setMonths] = useState([]);
@@ -41,6 +44,20 @@ export default function MonthData() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [selectedMonthId, setSelectedMonthId] = useState([]);
   const [tableLoading, setTableLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const userProfile = async () => {
+      try {
+        const res = await getProfile();
+        setProfile(res.data);
+      } catch (err) {
+        toast.error(`Failed to fetch profile: ${err}`);
+      }
+    };
+
+    userProfile();
+  }, []);
 
   useEffect(() => {
     fetchMonths();
@@ -52,13 +69,27 @@ export default function MonthData() {
     return recordDate < new Date(current.getFullYear(), current.getMonth(), 1);
   };
 
-  const handleUnlock = () => {
-    const pass = prompt("Enter admin password:");
+  const handleUnlock = async () => {
+    const { value: pass } = await Swal.fire({
+      title: "Admin Unlock",
+      input: "password",
+      inputLabel: "Enter admin password",
+      inputPlaceholder: "Password",
+      showCancelButton: true,
+    });
+
     if (pass === "sterling") {
-      alert("Unlocked ✅ You can now edit or delete old records");
+      await Swal.fire({
+        icon: "success",
+        title: "Unlocked",
+        text: "You can now edit or delete old records",
+      });
       setAdminUnlocked(true);
-    } else {
-      alert("❌ Wrong password");
+    } else if (pass) {
+      Swal.fire({
+        icon: "error",
+        title: "Wrong password",
+      });
     }
   };
 
@@ -81,14 +112,15 @@ export default function MonthData() {
     setLoading(true);
     try {
       await createMonth(form);
+      toast.success("Month added successfully.");
       setForm({ month: "", provider: "", totalUsedGB: 0 });
       fetchMonths();
     } catch (err) {
       console.error(err);
       if (err.response?.data?.message) {
-        alert(err.response.data.message);
+        toast.error(err.response.data.message);
       } else {
-        alert("Failed to add month");
+        toast.error("Failed to add month");
       }
     } finally {
       setLoading(false);
@@ -98,18 +130,19 @@ export default function MonthData() {
   // ➕ Add addon
   const handleAddAddon = async (e) => {
     e.preventDefault();
-    if (!addonForm.id) return alert("Select a month first");
+    if (!addonForm.id) return toast.error("Select a month first");
     try {
       await addAddon(addonForm.id, {
         extraGB: Number(addonForm.extraGB),
         cost: Number(addonForm.cost),
         notes: addonForm.notes,
       });
+      toast.success("Addon added successfully.");
       setAddonForm({ id: "", extraGB: 0, cost: 0, notes: "" });
       fetchMonths();
     } catch (err) {
       console.error(err);
-      alert("Failed to add addon");
+      toast.error("Failed to add addon");
     }
   };
 
@@ -124,23 +157,34 @@ export default function MonthData() {
         baseCost: Number(editForm.baseCost),
         totalUsedGB: Number(editForm.totalUsedGB),
       });
+      toast.success("Updated successfully.");
       setEditForm(null);
       fetchMonths();
     } catch (err) {
       console.error(err);
-      alert("Failed to update record");
+      toast.error("Failed to update record");
     }
   };
 
   // ❌ Delete record
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this record?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you really want to delete this record?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Yes, delete it!",
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteMonth(id);
+      toast.success("Month deleted successfully.");
       fetchMonths();
     } catch (err) {
       console.error(err);
-      alert("Failed to delete record");
+      toast.error("Failed to delete record");
     }
   };
 
@@ -327,161 +371,173 @@ export default function MonthData() {
       {activeTab === "usage" && (
         <>
           {/* Add Month Form */}
-          <motion.form
-            onSubmit={handleCreate}
-            className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
-            whileHover={{ scale: 1.005 }}
-          >
-            <div className="flex flex-col flex-1 min-w-[150px]">
-              <label className="font-semibold text-gray-700 mb-1">Month</label>
-              <input
-                type="month"
-                value={form.month}
-                onChange={(e) => setForm({ ...form, month: e.target.value })}
-                required
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[150px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Provider
-              </label>
-              <select
-                value={form.provider}
-                onChange={(e) => setForm({ ...form, provider: e.target.value })}
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-                required
-              >
-                <option value="">Select Provider</option>
-                <option value="SLT/FIBRE">SLT/FIBRE</option>
-                <option value="SLT/FIBRE/SMT">SLT/FIBRE/SMT</option>
-                <option value="Dialog">Dialog</option>
-                <option value="Mobitel">Mobitel</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[100px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Base GB (default 300)
-              </label>
-              <input
-                type="number"
-                value={form.basePlanGB}
-                onChange={(e) =>
-                  setForm({ ...form, basePlanGB: e.target.value })
-                }
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[100px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Base Cost (Rs.30,000)
-              </label>
-              <input
-                type="number"
-                value={form.baseCost}
-                onChange={(e) => setForm({ ...form, baseCost: e.target.value })}
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <motion.button
-              type="submit"
-              whileTap={{ scale: 0.95 }}
-              disabled={loading}
-              className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
-                loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+          {profile?.isAdmin && (
+            <motion.form
+              onSubmit={handleCreate}
+              className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
+              whileHover={{ scale: 1.005 }}
             >
-              {loading ? "Saving..." : "Add Month"}
-            </motion.button>
-          </motion.form>
+              <div className="flex flex-col flex-1 min-w-[150px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Month
+                </label>
+                <input
+                  type="month"
+                  value={form.month}
+                  onChange={(e) => setForm({ ...form, month: e.target.value })}
+                  required
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[150px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Provider
+                </label>
+                <select
+                  value={form.provider}
+                  onChange={(e) =>
+                    setForm({ ...form, provider: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                  required
+                >
+                  <option value="">Select Provider</option>
+                  <option value="SLT/FIBRE">SLT/FIBRE</option>
+                  <option value="SLT/FIBRE/SMT">SLT/FIBRE/SMT</option>
+                  <option value="Dialog">Dialog</option>
+                  <option value="Mobitel">Mobitel</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[100px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Base GB (default 300)
+                </label>
+                <input
+                  type="number"
+                  value={form.basePlanGB}
+                  onChange={(e) =>
+                    setForm({ ...form, basePlanGB: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[100px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Base Cost (Rs.30,000)
+                </label>
+                <input
+                  type="number"
+                  value={form.baseCost}
+                  onChange={(e) =>
+                    setForm({ ...form, baseCost: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <motion.button
+                type="submit"
+                whileTap={{ scale: 0.95 }}
+                disabled={loading}
+                className={`mt-2 px-6 py-2 font-semibold rounded-lg shadow text-white transition-all ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                {loading ? "Saving..." : "Add Month"}
+              </motion.button>
+            </motion.form>
+          )}
 
           {/* Add-on Form */}
-          <motion.form
-            onSubmit={handleAddAddon}
-            className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
-            whileHover={{ scale: 1.005 }}
-          >
-            <div className="flex flex-col flex-1 min-w-[150px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Select Month
-              </label>
-              <select
-                value={addonForm.id}
-                onChange={(e) =>
-                  setAddonForm({ ...addonForm, id: e.target.value })
-                }
-                required
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              >
-                <option value="">-- Select --</option>
-                {months.map((m) => (
-                  <option
-                    key={m._id}
-                    value={m._id}
-                    disabled={isMonthLocked(m) && !adminUnlocked}
-                  >
-                    {m.month} ({m.provider}){" "}
-                    {isMonthLocked(m) && !adminUnlocked ? "🔒" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[100px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Extra GB
-              </label>
-              <input
-                type="number"
-                value={addonForm.extraGB}
-                onChange={(e) =>
-                  setAddonForm({ ...addonForm, extraGB: e.target.value })
-                }
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[100px]">
-              <label className="font-semibold text-gray-700 mb-1">
-                Cost (Rs)
-              </label>
-              <input
-                type="number"
-                value={addonForm.cost}
-                onChange={(e) =>
-                  setAddonForm({ ...addonForm, cost: e.target.value })
-                }
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <div className="flex flex-col flex-1 min-w-[200px]">
-              <label className="font-semibold text-gray-700 mb-1">Notes</label>
-              <input
-                type="text"
-                value={addonForm.notes}
-                onChange={(e) =>
-                  setAddonForm({ ...addonForm, notes: e.target.value })
-                }
-                placeholder="E.g. Extra pack"
-                className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-            </div>
-
-            <motion.button
-              type="submit"
-              whileTap={{ scale: 0.95 }}
-              className="mt-2 px-6 py-2 font-semibold rounded-lg shadow bg-green-600 text-white hover:bg-green-700 transition-all"
+          {profile?.isAdmin && (
+            <motion.form
+              onSubmit={handleAddAddon}
+              className="flex flex-col sm:flex-row sm:flex-wrap gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8"
+              whileHover={{ scale: 1.005 }}
             >
-              Add Add-on
-            </motion.button>
-          </motion.form>
+              <div className="flex flex-col flex-1 min-w-[150px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Select Month
+                </label>
+                <select
+                  value={addonForm.id}
+                  onChange={(e) =>
+                    setAddonForm({ ...addonForm, id: e.target.value })
+                  }
+                  required
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                >
+                  <option value="">-- Select --</option>
+                  {months.map((m) => (
+                    <option
+                      key={m._id}
+                      value={m._id}
+                      disabled={isMonthLocked(m) && !adminUnlocked}
+                    >
+                      {m.month} ({m.provider}){" "}
+                      {isMonthLocked(m) && !adminUnlocked ? "🔒" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[100px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Extra GB
+                </label>
+                <input
+                  type="number"
+                  value={addonForm.extraGB}
+                  onChange={(e) =>
+                    setAddonForm({ ...addonForm, extraGB: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[100px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Cost (Rs)
+                </label>
+                <input
+                  type="number"
+                  value={addonForm.cost}
+                  onChange={(e) =>
+                    setAddonForm({ ...addonForm, cost: e.target.value })
+                  }
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-[200px]">
+                <label className="font-semibold text-gray-700 mb-1">
+                  Notes
+                </label>
+                <input
+                  type="text"
+                  value={addonForm.notes}
+                  onChange={(e) =>
+                    setAddonForm({ ...addonForm, notes: e.target.value })
+                  }
+                  placeholder="E.g. Extra pack"
+                  className="border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
+              </div>
+
+              <motion.button
+                type="submit"
+                whileTap={{ scale: 0.95 }}
+                className="mt-2 px-6 py-2 font-semibold rounded-lg shadow bg-green-600 text-white hover:bg-green-700 transition-all"
+              >
+                Add Add-on
+              </motion.button>
+            </motion.form>
+          )}
 
           {/* Table */}
           {tableLoading ? (
@@ -516,7 +572,9 @@ export default function MonthData() {
                     <th className="py-3 px-4 text-left">Add-ons</th>
                     <th className="py-3 px-4 text-left">Total Data</th>
                     <th className="py-3 px-4 text-left">Total Cost</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    {profile?.isAdmin && (
+                      <th className="py-3 px-4 text-center">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -541,33 +599,35 @@ export default function MonthData() {
                         <td className="py-3 px-4 font-semibold">
                           Rs.{m.totalCost}
                         </td>
-                        <td className="py-3 px-4 flex justify-center gap-2 items-center">
-                          {isMonthLocked(m) && !adminUnlocked ? (
-                            <>
-                              <button
-                                onClick={handleUnlock}
-                                className="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 flex items-center gap-1"
-                              >
-                                🔒 Locked
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => setEditForm(m)}
-                                className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(m._id)}
-                                className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-                        </td>
+                        {profile?.isAdmin && (
+                          <td className="py-3 px-4 flex justify-center gap-2 items-center">
+                            {isMonthLocked(m) && !adminUnlocked ? (
+                              <>
+                                <button
+                                  onClick={handleUnlock}
+                                  className="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 flex items-center gap-1"
+                                >
+                                  🔒 Locked
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => setEditForm(m)}
+                                  className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(m._id)}
+                                  className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))
                   ) : (

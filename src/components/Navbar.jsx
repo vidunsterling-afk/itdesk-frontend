@@ -136,6 +136,12 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
   const [timeLeftExpanded, setTimeLeftExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [profile, setProfile] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+  const [persistentExpanded, setPresistentExpanded] = useState(() => {
+    return (
+      localStorage.getItem("sidebarExpanded") === "true" || defaultExpanded
+    );
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -246,7 +252,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           path: "/usermanagement",
           label: "User Management",
           icon: <FaUserCog />,
-          adminOnly: true, // restricted
+          adminOnly: true,
         },
       ],
     },
@@ -258,7 +264,12 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       children: [
         { path: "/employees", label: "Employees", icon: <FaUsers /> },
         { path: "/assets", label: "Assets", icon: <FaBoxOpen /> },
-        { path: "/assign-assets", label: "Assign Assets", icon: <FaTasks /> },
+        {
+          path: "/assign-assets",
+          label: "Assign Assets",
+          icon: <FaTasks />,
+          adminOnly: true,
+        },
       ],
     },
     {
@@ -295,7 +306,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
           icon: <RiFingerprintLine />,
         },
         {
-          path: "/datar",
+          path: "/subline",
           label: "D Report",
           icon: <MdOutline4gPlusMobiledata />,
         },
@@ -308,7 +319,12 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
       icon: <CiMemoPad />,
       children: [
         { path: "/tags", label: "Tags", icon: <FaTags /> },
-        { path: "/memo", label: "Memorandum", icon: <CiMemoPad /> },
+        {
+          path: "/memo",
+          label: "Memorandum",
+          icon: <CiMemoPad />,
+          adminOnly: true,
+        },
       ],
     },
   ];
@@ -442,7 +458,7 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
     return null;
   };
 
-  const expanded = isHovered;
+  const expanded = persistentExpanded || isHovered;
 
   return (
     <>
@@ -495,7 +511,19 @@ export default function Navbar({ setIsExpanded, defaultExpanded = false }) {
 
         <div className="p-4 border-t border-gray-800 flex flex-col gap-2">
           <button
-            onClick={() => navigate("/settings")}
+            onClick={(e) => {
+              if (!profile?.isAdmin) {
+                e.preventDefault();
+                Swal.fire({
+                  icon: "error",
+                  title: "Access Denied",
+                  text: "Admin Only!",
+                  confirmButtonColor: "#d33",
+                });
+                return;
+              }
+              navigate("/settings");
+            }}
             className="flex items-center gap-3 w-full h-10 px-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-all"
           >
             <FaCogs className="text-lg flex-shrink-0" />
