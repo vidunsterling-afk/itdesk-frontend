@@ -33,16 +33,28 @@ export default function Login() {
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await loginUser(form);
-      login(res.data.token);
-      toast.success("Login successful!");
-      navigate("/dashboard");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Login failed");
-    }
-  };
+  e.preventDefault();
+
+  // Check if backend is ready
+  if (backendStatus === "connecting") {
+    toast.loading("Waiting for server to connect...", { duration: 2000 });
+    return;
+  }
+
+  if (backendStatus === "offline") {
+    toast.error("Server is offline. Please try again later.");
+    return;
+  }
+
+  try {
+    const res = await loginUser(form);
+    login(res.data.token);
+    toast.success("Login successful!");
+    navigate("/dashboard");
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Login failed");
+  }
+};
 
   // Bounce animation for background icons
   const bounceVariants = {
